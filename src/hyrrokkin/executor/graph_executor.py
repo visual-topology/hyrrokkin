@@ -29,15 +29,23 @@ from hyrrokkin.utils.resource_loader import ResourceLoader
 from hyrrokkin.executor.execution_thread import ExecutionThread
 from hyrrokkin.executor.execution_state import ExecutionState
 
-def default_service_factory(executor, network, node_id):
+
+def default_node_factory(executor, network, node_id):
     services = NodeServices(node_id)
     wrapper = NodeWrapper(executor, network, node_id, services)
     return (services, wrapper)
 
 
+def default_configuration_factory(executor, network, package_id):
+    services = ConfigurationServices(package_id)
+    wrapper = ConfigurationWrapper(executor, network, package_id, services)
+    return (services, wrapper)
+
+
 class GraphExecutor:
 
-    def __init__(self, schema, message_callback, status_callback, node_execution_callback, execution_complete_callback, services_factory=default_service_factory):
+    def __init__(self, schema, message_callback, status_callback, node_execution_callback, execution_complete_callback,
+                 node_factory=default_node_factory, configuration_factory=default_configuration_factory):
         self.network = Network(schema)
         self.queue = queue.Queue()
         self.stop_on_execution_complete = False
@@ -45,7 +53,8 @@ class GraphExecutor:
         self.status_callback = status_callback
         self.node_execution_callback = node_execution_callback
         self.execution_complete_callback = execution_complete_callback
-        self.services_factory = services_factory
+        self.node_factory = node_factory
+        self.configuration_factory = configuration_factory
         self.et = None
         self.state = ExecutionState()
         self.paused = False
@@ -96,11 +105,10 @@ class GraphExecutor:
         node = self.network.get_node(node_id)
         node_type_name = node.get_node_type()
         node_id = node.get_node_id()
-
         node_type = self.network.schema.get_node_type(node_type_name)
         (package_id, _) = Schema.split_descriptor(node_type_name)
         if node_id not in self.state.node_wrappers:
-            (services, node_wrapper) = self.services_factory(self, self.network, node_id)
+            (services, node_wrapper) = self.node_factory(self, self.network, node_id)
             if package_id in self.state.configuration_wrappers:
                 node_wrapper.set_configuration(self.state.configuration_wrappers[package_id])
             classname = node_type.get_classname()
@@ -111,14 +119,13 @@ class GraphExecutor:
 
     def create_instance_for_configuration(self, package_id, classname):
         if package_id not in self.state.configuration_wrappers:
-            services = ConfigurationServices(package_id)
-            wrapper = ConfigurationWrapper(self.network, package_id, services)
-            services.set_wrapper(wrapper)
-
+            (services, configuration_wrapper) = self.configuration_factory(self, self.network, package_id)
+            services.set_wrapper(configuration_wrapper)
             cls = ResourceLoader.get_class(classname)
             instance = cls(services)
-            wrapper.set_instance(instance)
-            self.state.configuration_wrappers[package_id] = wrapper
+            configuration_wrapper.set_instance(instance)
+            self.state.configuration_wrappers[package_id] = configuration_wrapper
+
 
     def stop(self):
         if self.et:
@@ -143,6 +150,9 @@ class GraphExecutor:
 
     def recv_node_message(self, node_id, content):
         self.et.schedule_recv_node_message(node_id, content)
+
+    def recv_configuration_message(self, package_id, content):
+        self.et.schedule_recv_configuration_message(package_id, content)
 
     def remove_node(self, node_id):
         self.network.remove_node(node_id)

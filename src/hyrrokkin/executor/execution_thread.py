@@ -334,6 +334,9 @@ class ExecutionThread(threading.Thread):
     def schedule_recv_node_message(self, node_id, msg):
         asyncio.run_coroutine_threadsafe(self.recv_node_message(node_id, msg), self.loop)
 
+    def schedule_recv_configuration_message(self, package_id, msg):
+        asyncio.run_coroutine_threadsafe(self.recv_configuration_message(package_id, msg), self.loop)
+
     def schedule_request_node_execution(self, node_id):
         asyncio.run_coroutine_threadsafe(self.request_execution_coro(node_id), self.loop)
 
@@ -354,6 +357,11 @@ class ExecutionThread(threading.Thread):
     async def recv_node_message(self, node_id, content):
         wrapper = self.state.node_wrappers[node_id]
         wrapper.recv_node_message(content)
+
+    async def recv_configuration_message(self, package_id, content):
+        wrapper = self.state.configuration_wrappers[package_id]
+        wrapper.recv_configuration_message(content)
+
 
     def reset_execution(self, node_id):
         self.state.node_wrappers[node_id].reset_execution()

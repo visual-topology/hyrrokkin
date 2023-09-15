@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "package_schema.json",
+  "title": "JSONSchema description of Hyrrokkin Packages",
+  "description": "Specify how Hyrrokkin Packages are defined in JSON",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id","metadata","node_types"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Provide a unique id for this package"
+    },
+    "executor": {
+      "type": "string"
+    },
+    "configuration": {
+      "type": "object",
+      "description": "Specify code that handles the package configuration",
+      "properties": {
+        "classname": {
+           "description": "specify the class implementing this packages's configuration, for example (executor=python) this would look like package.subpackage.module.Class"
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "Provide a list of the paths/urls of resource dependencies, as understood by the executor",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Attach metadata to this package",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Provide a short descriptive name of this package"
+        },
+        "description": {
+          "type": "string",
+          "description": "Provide a short description (~1 paragraph) of the purpose of this package"
+        },
+        "version": {
+          "type": "string",
+          "description": "Specify the version of the package"
+        }
+      }
+    },
+    "display": {
+      "type": "object",
+      "description": "Specify how nodes in this package are displayed in a network diagram",
+      "properties": {
+        "icon": {
+          "description": "Provide the URL of a SVG icon, relative to the package",
+          "type": "string"
+        },
+        "corners": {
+          "description": "Define the shape of the node, in terms of the number of corners",
+          "type": "integer"
+        },
+        "style": {
+          "description": "Specify CSS styles to apply to this node's icon",
+          "type": "string"
+        }
+      }
+    },
+    "node_types": {
+      "type": "object",
+      "description": "mapping from a node type id to its definition",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "$ref": "file:node_type_schema.json"
+        }
+      }
+    },
+    "link_types": {
+      "type": "object",
+      "description": "mapping from a link type id to its definition",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "$ref": "file:link_type_schema.json"
+        }
+      }
+    }
+  }
+}

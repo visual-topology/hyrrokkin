@@ -176,15 +176,13 @@
         "number_pullstream": {
             "metadata": {
                 "name": "Number Pull Stream",
-                "description": "Stream of numbers based on the Pull Pattern (iterators)",
-                "is_stream": true
+                "description": "Stream of numbers based on the Pull Pattern (iterators)"
             }
         },
         "number_pushstream": {
             "metadata": {
                 "name": "Number Push Stream",
-                "description": "Stream of numbers based on the Push Pattern (callbacks)",
-                "is_stream": true
+                "description": "Stream of numbers based on the Push Pattern (callbacks)"
             }
         }
     }

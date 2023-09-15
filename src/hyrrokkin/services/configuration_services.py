@@ -31,13 +31,16 @@ class ConfigurationServices:
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
 
+    def __report_status(self, status_state, status_message):
+        self.wrapper.set_status(StatusStates.info.value, status_message)
+
     def set_status_info(self, status_message: str):
         """
         Set an info status message for the configuration.
 
         :param status_message: a short descriptive message or empty string
         """
-        self.wrapper.set_status(StatusStates.info.value, status_message)
+        self.__report_status(StatusStates.info.value, status_message)
 
     def set_status_warning(self, status_message: str):
         """
@@ -45,7 +48,7 @@ class ConfigurationServices:
 
         :param status_message: a short descriptive message or empty string
         """
-        self.wrapper.set_status(StatusStates.warning.value, status_message)
+        self.__report_status(StatusStates.warning.value, status_message)
 
     def set_status_error(self, status_message: str):
         """
@@ -53,13 +56,13 @@ class ConfigurationServices:
 
         :param status_message: a short descriptive message or empty string
         """
-        self.wrapper.set_status(StatusStates.error.value, status_message)
+        self.__report_status(StatusStates.error.value, status_message)
 
     def clear_status(self):
         """
         Clear any previous status message on the configuration
         """
-        self.wrapper.set_status(StatusStates.clear.value, "")
+        self.__report_status(StatusStates.clear.value, "")
 
     def get_property(self, property_name:str, default_value=None):
         """

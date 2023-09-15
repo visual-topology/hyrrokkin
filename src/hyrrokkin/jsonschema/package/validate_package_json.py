@@ -17,39 +17,37 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import copy
+import argparse
+import json
+import os.path
 import logging
 
-class ConfigurationWrapper:
+from jsonschema import validate
 
-    def __init__(self, executor, network, package_id, services):
-        self.executor = executor
-        self.network = network
-        self.package_id = package_id
-        self.instance = None
-        self.services = services
-        self.message_handler = None
-        self.logger = logging.getLogger(f"ConfigurationWrapper[{package_id}]")
+logger = logging.getLogger("package_validation")
 
-    def set_instance(self, instance):
-        self.instance = instance
+schema_folder = os.path.split("__file__")[0]
 
-    def get_instance(self):
-        return self.instance
+with open(os.path.join(schema_folder, "package_schema.json")) as f:
+    schema = json.loads(f.read())
 
-    def set_property(self, property_name, property_value):
-        property_value = copy.deepcopy(property_value)
-        self.network.set_package_property(self.package_id, property_name, property_value)
+def validate_package_schema_json(path_to_json):
+    with open(path_to_json) as f:
+        try:
+            logger.info(f"Validating: {path_to_json}")
+            o = json.loads(f.read())
+            validate(o,schema)
+            logger.info(f"Validated: {path_to_json}")
+            return True
+        except:
+            logger.exception(f"Validation failed for: {path_to_json}")
+            return False
 
-    def get_property(self, property_name):
-        return self.network.get_package_property(self.package_id, property_name)
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_file")
+    args = parser.parse_args()
+    validate_package_schema_json(args.input_file)
 
-    def set_status(self, state, status_message):
-        pass
 
-    def open_file(self, path, mode, is_temporary, **kwargs):
-        return self.network.open_file(self.package_id, "configuration", path, mode, is_temporary, **kwargs)
-
-    def recv_configuration_message(self, message):
-        # to be overriden in sub-class
-        pass

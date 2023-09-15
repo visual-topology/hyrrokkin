@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "node_type_schema.json",
+  "title": "JSONSchema description of a Hyrrokkin Node Type",
+  "description": "Specify how Hyrrokkin Node Types are defined in JSON",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Attach metadata to this node type",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Provide a short descriptive name for this node type"
+        },
+        "description": {
+          "type": "string",
+          "description": "Provide a short description (~1 paragraph) of the purpose of this node type"
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "Provide a list of the paths/urls of resource dependencies, as understood by the executor",
+      "items": {
+        "type": "string"
+      }
+    },
+    "input_ports": {
+      "type": "object",
+      "description": "Specify a mapping from an input port name to its definition",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "properties": {
+            "link_type": {
+              "type": "string",
+              "description": "the link type of the port, qualified with the package name"
+            },
+            "allow_multiple_connections": {
+              "type": "boolean",
+              "description": "whether this port allows more than one connection to other ports"
+            }
+          }
+        }
+      }
+    },
+    "output_ports": {
+      "type": "object",
+      "description": "Specify a mapping from an output port name to its definition",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "properties": {
+            "link_type": {
+              "type": "string",
+              "description": "the link type of the port, qualified with the package name"
+            },
+            "allow_multiple_connections": {
+              "type": "boolean",
+              "description": "whether this port allows more than one connection to other ports"
+            }
+          }
+        }
+      }
+    },
+    "page": {
+      "type": "object",
+      "description": "Specify how this node's content is displayed",
+      "properties": {
+        "url": {
+          "description": "Provide the URL of a page to display this node's content",
+          "type": "string"
+        }
+      }
+    },
+    "display": {
+      "type": "object",
+      "description": "Specify how this node is displayed in a network diagram",
+      "properties": {
+        "icon": {
+          "description": "Provide the URL of a SVG icon, relative to the package",
+          "type": "string"
+        },
+        "corners": {
+          "description": "Define the shape of the node, in terms of the number of corners",
+          "type": "integer"
+        },
+        "style": {
+          "description": "Specify CSS styles to apply to this node's icon",
+          "type": "string"
+        }
+      }
+    },
+    "classname": {
+      "type": "string",
+      "description": "specify the python class implementing this node, for example (executor=python) this would look like package.subpackage.module.Class"
+    }
+  }
+}
