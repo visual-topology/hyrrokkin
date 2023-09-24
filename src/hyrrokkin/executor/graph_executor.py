@@ -74,15 +74,7 @@ class GraphExecutor:
 
     def run(self, terminate_on_complete=False, execute_to_nodes="*", cache_outputs_for_nodes="*"):
 
-        for node_id in self.network.get_node_ids():
-            self.create_instance_for_node(node_id)
-
-        for (package_id, package) in self.network.get_schema().get_packages().items():
-            package_configuration = package.get_configuration()
-            if "classname" in package_configuration:
-                self.create_instance_for_configuration(package_id, package_configuration["classname"])
-
-        self.et = ExecutionThread(self.queue, self.network, self.state)
+        self.et = ExecutionThread(self, self.queue, self.network, self.node_factory, self.configuration_factory, self.state)
         self.et.start()
 
         self.stop_on_execution_complete = terminate_on_complete
@@ -101,21 +93,7 @@ class GraphExecutor:
         self.et.loop.close()
         self.et = None
 
-    def create_instance_for_node(self, node_id):
-        node = self.network.get_node(node_id)
-        node_type_name = node.get_node_type()
-        node_id = node.get_node_id()
-        node_type = self.network.schema.get_node_type(node_type_name)
-        (package_id, _) = Schema.split_descriptor(node_type_name)
-        if node_id not in self.state.node_wrappers:
-            (services, node_wrapper) = self.node_factory(self, self.network, node_id)
-            if package_id in self.state.configuration_wrappers:
-                node_wrapper.set_configuration(self.state.configuration_wrappers[package_id])
-            classname = node_type.get_classname()
-            cls = ResourceLoader.get_class(classname)
-            instance = cls(services)
-            node_wrapper.set_instance(instance)
-            self.state.node_wrappers[node_id] = node_wrapper
+
 
     def create_instance_for_configuration(self, package_id, classname):
         if package_id not in self.state.configuration_wrappers:
@@ -133,7 +111,7 @@ class GraphExecutor:
 
     def add_node(self, node):
         self.network.add_node(node)
-        self.create_instance_for_node(node_id=node.get_node_id())
+        # self.create_instance_for_node(node_id=node.get_node_id())
         if self.et:
             self.et.schedule_node_added(node)
 

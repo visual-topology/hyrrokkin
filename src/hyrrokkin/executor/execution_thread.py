@@ -24,15 +24,20 @@ from collections import defaultdict
 
 from hyrrokkin.executor.execution_state import ExecutionState
 from hyrrokkin.executor.node_execution_states import NodeExecutionStates
+from hyrrokkin.schema.schema import Schema
+from hyrrokkin.utils.resource_loader import ResourceLoader
 
 class ExecutionThread(threading.Thread):
 
-    def __init__(self, executor_queue, network, state=None, execution_limit=4):
+    def __init__(self, graph_executor, executor_queue, network, node_factory, configuration_factory, state=None, execution_limit=4):
         super().__init__()
+        self.graph_executor = graph_executor
         self.executor_queue = executor_queue
         self.state = state if state is not None else ExecutionState()
         self.network = network
         self.execution_limit = execution_limit
+        self.node_factory = node_factory
+        self.configuration_factory = configuration_factory
 
         # lookup incoming links by node-id and port
         self.in_links = {}  # in-node-id => in-port => [link]
@@ -92,6 +97,9 @@ class ExecutionThread(threading.Thread):
             all_node_ids = list(all_node_ids)
         else:
             all_node_ids = self.network.get_node_ids(traversal_order=True)
+
+        for (package_id, package) in self.network.get_schema().get_packages().items():
+            self.register_package(package_id, package)
 
         for node_id in all_node_ids:
             self.register_node(node_id)
@@ -201,8 +209,34 @@ class ExecutionThread(threading.Thread):
         pass
 
     def register_node(self, node_id):
+        node = self.network.get_node(node_id)
+        node_type_name = node.get_node_type()
+        node_id = node.get_node_id()
+        node_type = self.network.schema.get_node_type(node_type_name)
+        (package_id, _) = Schema.split_descriptor(node_type_name)
+        if node_id not in self.state.node_wrappers:
+            (services, node_wrapper) = self.node_factory(self.graph_executor, self.network, node_id)
+            if package_id in self.state.configuration_wrappers:
+                node_wrapper.set_configuration(self.state.configuration_wrappers[package_id])
+            classname = node_type.get_classname()
+            cls = ResourceLoader.get_class(classname)
+            instance = cls(services)
+            node_wrapper.set_instance(instance)
+            self.state.node_wrappers[node_id] = node_wrapper
         self.is_executing[node_id] = 0
         self.execution_states[node_id] = ""
+
+    def register_package(self, package_id, package):
+        package_configuration = package.get_configuration()
+        if "classname" in package_configuration:
+            classname = package_configuration["classname"]
+            if package_id not in self.state.configuration_wrappers:
+                (services, configuration_wrapper) = self.configuration_factory(self.graph_executor, self.network, package_id)
+                services.set_wrapper(configuration_wrapper)
+                cls = ResourceLoader.get_class(classname)
+                instance = cls(services)
+                configuration_wrapper.set_instance(instance)
+                self.state.configuration_wrappers[package_id] = configuration_wrapper
 
     def executing_node_count(self):
         return len(self.executing_nodes)

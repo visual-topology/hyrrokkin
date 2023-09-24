@@ -24,6 +24,10 @@
         }
       }
     },
+    "enabled": {
+      "type": "boolean",
+      "description": "whether this node type is enabled"
+    },
     "dependencies": {
       "type": "array",
       "description": "Provide a list of the paths/urls of resource dependencies, as understood by the executor",

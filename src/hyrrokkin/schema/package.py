@@ -86,7 +86,8 @@ class Package:
             try:
                 cls = ResourceLoader.get_class(fq_classname)
                 configuration["classname"] = fq_classname
-            except:
+            except Exception as ex:
+                print(ex)
                 pass
 
         return Package(

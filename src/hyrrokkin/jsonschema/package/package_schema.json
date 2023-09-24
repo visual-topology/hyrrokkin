@@ -68,6 +68,10 @@
         }
       }
     },
+    "l10n": {
+      "type": "object",
+      "$ref": "file:l10n_schema.json"
+    },
     "node_types": {
       "type": "object",
       "description": "mapping from a node type id to its definition",

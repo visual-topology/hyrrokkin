@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "l10n_schema.json",
+  "title": "JSONSchema description of Hyrrokkin language localisations",
+  "description": "Specify how a Hyrrokkin localisation is defined in JSON",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+        "languages", "default_language"
+  ],
+  "properties": {
+     "default_language": {
+       "type": "string",
+       "description": "the default language code"
+     },
+    "languages": {
+      "type": "object",
+      "description": "mapping from a short language code (for example, 'fr') to its definition",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "A human readable name for the language, for example 'Français'"
+            },
+            "bundle_url": {
+              "type": "string",
+              "description": "a relative url pointing to a localisation bundle for this langauge"
+            }
+          }
+        }
+      }
+    }
+  }
+}

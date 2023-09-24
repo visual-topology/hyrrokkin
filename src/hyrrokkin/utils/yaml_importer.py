@@ -30,7 +30,7 @@ def import_from_yaml(into_topology,from_file):
     spec = cfg.get("configuration",{})
     for package_id in spec:
         package_properties = {}
-        for (name,value) in spec[package_id]:
+        for (name,value) in spec[package_id].items():
             package_properties[name] = value
         into_topology.set_configuration(package_id, package_properties)
 
