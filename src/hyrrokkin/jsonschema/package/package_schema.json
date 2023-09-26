@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "package_schema.json",
-  "title": "JSONSchema description of Hyrrokkin Packages",
-  "description": "Specify how Hyrrokkin Packages are defined in JSON",
+  "title": "JSONSchema description of Packages",
+  "description": "Specify how Packages are defined in JSON",
   "type": "object",
   "additionalProperties": false,
   "required": ["id","metadata","node_types"],
@@ -49,28 +49,6 @@
           "description": "Specify the version of the package"
         }
       }
-    },
-    "display": {
-      "type": "object",
-      "description": "Specify how nodes in this package are displayed in a network diagram",
-      "properties": {
-        "icon": {
-          "description": "Provide the URL of a SVG icon, relative to the package",
-          "type": "string"
-        },
-        "corners": {
-          "description": "Define the shape of the node, in terms of the number of corners",
-          "type": "integer"
-        },
-        "style": {
-          "description": "Specify CSS styles to apply to this node's icon",
-          "type": "string"
-        }
-      }
-    },
-    "l10n": {
-      "type": "object",
-      "$ref": "file:l10n_schema.json"
     },
     "node_types": {
       "type": "object",

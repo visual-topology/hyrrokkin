@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "link_type_schema.json",
-  "title": "JSONSchema description of Hyrrokkin Link Type",
-  "description": "Specify how Hyrrokkin Link Types are defined in JSON",
+  "title": "JSONSchema description of Link Type",
+  "description": "Specify how Link Types are defined in JSON",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -21,15 +21,6 @@
         "description": {
           "type": "string",
           "description": "Provide a short description (~1 paragraph) of the purpose of this link type"
-        }
-      }
-    },
-    "display": {
-      "type": "object",
-      "properties": {
-        "colour": {
-          "type": "string",
-          "description": "Specify a colour for this link type, used when drawing networks as a diagram"
         }
       }
     }

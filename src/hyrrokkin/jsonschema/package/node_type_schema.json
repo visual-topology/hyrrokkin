@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "node_type_schema.json",
-  "title": "JSONSchema description of a Hyrrokkin Node Type",
-  "description": "Specify how Hyrrokkin Node Types are defined in JSON",
+  "title": "JSONSchema description of a Node Type",
+  "description": "Specify how Node Types are defined in JSON",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -70,34 +70,6 @@
               "description": "whether this port allows more than one connection to other ports"
             }
           }
-        }
-      }
-    },
-    "page": {
-      "type": "object",
-      "description": "Specify how this node's content is displayed",
-      "properties": {
-        "url": {
-          "description": "Provide the URL of a page to display this node's content",
-          "type": "string"
-        }
-      }
-    },
-    "display": {
-      "type": "object",
-      "description": "Specify how this node is displayed in a network diagram",
-      "properties": {
-        "icon": {
-          "description": "Provide the URL of a SVG icon, relative to the package",
-          "type": "string"
-        },
-        "corners": {
-          "description": "Define the shape of the node, in terms of the number of corners",
-          "type": "integer"
-        },
-        "style": {
-          "description": "Specify CSS styles to apply to this node's icon",
-          "type": "string"
         }
       }
     },

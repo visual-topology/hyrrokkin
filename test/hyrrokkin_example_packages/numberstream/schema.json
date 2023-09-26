@@ -7,6 +7,15 @@
     },
     "executor": "python",
     "dependencies": [],
+    "l10n": {
+        "languages": {
+            "en": {
+                "name": "English",
+                "bundle_url": "l10n/en.json"
+            }
+        },
+        "default_language":"en"
+    },
     "configuration": {
         "classname": "configuration.Configuration"
     },
