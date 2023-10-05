@@ -19,7 +19,7 @@
 
 import copy
 import logging
-
+import asyncio
 
 class NodeWrapper:
 
@@ -46,7 +46,14 @@ class NodeWrapper:
 
     async def execute(self, inputs):
         if hasattr(self.instance, "execute"):
-            return await self.instance.execute(inputs)
+            if asyncio.iscoroutinefunction(self.instance.execute):
+                return await self.instance.execute(inputs)
+            else:
+                try:
+                    return self.instance.execute(inputs)
+                except Exception as ex:
+                    print(ex)
+                    return {}
         else:
             return {}
 

@@ -200,6 +200,7 @@ class ExecutionThread(threading.Thread):
             link = self.network.get_link(link_id)
             self.in_links[link.to_node_id][link.to_port].remove(link)
             self.out_links[link.from_node_id][link.from_port].remove(link)
+            self.network.remove_link(link_id)
             self.mark_dirty(link.to_node_id)
             self.dispatch()
         except:
@@ -220,7 +221,10 @@ class ExecutionThread(threading.Thread):
                 node_wrapper.set_configuration(self.state.configuration_wrappers[package_id])
             classname = node_type.get_classname()
             cls = ResourceLoader.get_class(classname)
-            instance = cls(services)
+            try:
+                instance = cls(services)
+            except Exception as ex:
+                print(ex)
             node_wrapper.set_instance(instance)
             self.state.node_wrappers[node_id] = node_wrapper
         self.is_executing[node_id] = 0
@@ -315,7 +319,10 @@ class ExecutionThread(threading.Thread):
             if results is None:
                 results = {}
             self.set_node_execution_state(node_id, NodeExecutionStates.executed)
-            self.post_execute(node_id, results, None)
+            try:
+                self.post_execute(node_id, results, None)
+            except Exception as ex2:
+                print(ex2)
         except Exception as ex:
             self.logger.exception(f"Error executing {node_id}")
             self.set_node_execution_state(node_id, NodeExecutionStates.failed)
@@ -324,7 +331,8 @@ class ExecutionThread(threading.Thread):
         self.dispatch()
 
     def post_execute(self, node_id, result, exn):
-        del self.executing_nodes[node_id]
+        if node_id in self.executing_nodes:
+            del self.executing_nodes[node_id]
         if result is not None:
             self.state.node_outputs[node_id] = {}
             output_port_names = self.network.get_output_ports(node_id)

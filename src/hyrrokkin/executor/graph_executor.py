@@ -24,7 +24,7 @@ from hyrrokkin.services.node_services import NodeServices
 from hyrrokkin.services.node_wrapper import NodeWrapper
 from hyrrokkin.services.configuration_services import ConfigurationServices
 from hyrrokkin.services.configuration_wrapper import ConfigurationWrapper
-from hyrrokkin.schema.schema import Schema
+
 from hyrrokkin.utils.resource_loader import ResourceLoader
 from hyrrokkin.executor.execution_thread import ExecutionThread
 from hyrrokkin.executor.execution_state import ExecutionState
@@ -93,8 +93,6 @@ class GraphExecutor:
         self.et.loop.close()
         self.et = None
 
-
-
     def create_instance_for_configuration(self, package_id, classname):
         if package_id not in self.state.configuration_wrappers:
             (services, configuration_wrapper) = self.configuration_factory(self, self.network, package_id)
@@ -104,14 +102,12 @@ class GraphExecutor:
             configuration_wrapper.set_instance(instance)
             self.state.configuration_wrappers[package_id] = configuration_wrapper
 
-
     def stop(self):
         if self.et:
             self.et.schedule_stop_executor()
 
     def add_node(self, node):
         self.network.add_node(node)
-        # self.create_instance_for_node(node_id=node.get_node_id())
         if self.et:
             self.et.schedule_node_added(node)
 
@@ -138,9 +134,11 @@ class GraphExecutor:
             self.et.schedule_node_removed(node_id)
 
     def remove_link(self, link_id):
-        self.network.remove_link(link_id)
+
         if self.et:
             self.et.schedule_link_removed(link_id)
+        else:
+            self.network.remove_link(link_id)
 
     def clear(self):
         self.network.clear()

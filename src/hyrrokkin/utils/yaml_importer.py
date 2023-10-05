@@ -36,27 +36,28 @@ def import_from_yaml(into_topology,from_file):
 
     nodes = cfg.get("nodes",{})
     node_types = {}
-
-    for node_id in nodes:
-        node_spec = nodes[node_id]
-        node_type = node_spec["type"]
-        node_properties = node_spec.get("properties",{})
-        into_topology.add_node(node_id, node_type, node_properties)
-        node_types[node_id] = node_type
+    if nodes:
+        for node_id in nodes:
+            node_spec = nodes[node_id]
+            node_type = node_spec["type"]
+            node_properties = node_spec.get("properties",{})
+            into_topology.add_node(node_id, node_type, node_properties)
+            node_types[node_id] = node_type
 
     links = cfg.get("links",[])
-    for idx in range(len(links)):
-        link_id = "link"+str(idx)
-        link_spec = cfg["links"][idx]
-        from_to = link_spec.split("=>")
-        from_parts = from_to[0].strip().split(":")
-        from_node_id = from_parts[0]
-        from_port = from_parts[1] if len(from_parts) > 1 else None
-        to_parts = from_to[1].strip().split(":")
-        to_node_id = to_parts[0]
-        to_port = to_parts[1] if len(to_parts) > 1 else None
+    if links:
+        for idx in range(len(links)):
+            link_id = "link"+str(idx)
+            link_spec = cfg["links"][idx]
+            from_to = link_spec.split("=>")
+            from_parts = from_to[0].strip().split(":")
+            from_node_id = from_parts[0]
+            from_port = from_parts[1] if len(from_parts) > 1 else None
+            to_parts = from_to[1].strip().split(":")
+            to_node_id = to_parts[0]
+            to_port = to_parts[1] if len(to_parts) > 1 else None
 
-        into_topology.add_link(link_id,from_node_id,from_port,to_node_id,to_port)
+            into_topology.add_link(link_id,from_node_id,from_port,to_node_id,to_port)
 
 
 
