@@ -50,6 +50,6 @@ class ConfigurationWrapper:
     def open_file(self, path, mode, is_temporary, **kwargs):
         return self.network.open_file(self.package_id, "configuration", path, mode, is_temporary, **kwargs)
 
-    def recv_configuration_message(self, message):
+    def recv_message(self, message):
         # to be overriden in sub-class
         pass

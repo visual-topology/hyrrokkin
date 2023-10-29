@@ -223,9 +223,10 @@ class ExecutionThread(threading.Thread):
             cls = ResourceLoader.get_class(classname)
             try:
                 instance = cls(services)
+                node_wrapper.set_instance(instance)
             except Exception as ex:
                 print(ex)
-            node_wrapper.set_instance(instance)
+
             self.state.node_wrappers[node_id] = node_wrapper
         self.is_executing[node_id] = 0
         self.execution_states[node_id] = ""
@@ -398,12 +399,11 @@ class ExecutionThread(threading.Thread):
 
     async def recv_node_message(self, node_id, content):
         wrapper = self.state.node_wrappers[node_id]
-        wrapper.recv_node_message(content)
+        wrapper.recv_message(content)
 
     async def recv_configuration_message(self, package_id, content):
         wrapper = self.state.configuration_wrappers[package_id]
-        wrapper.recv_configuration_message(content)
-
+        wrapper.recv_message(content)
 
     def reset_execution(self, node_id):
         self.state.node_wrappers[node_id].reset_execution()

@@ -76,7 +76,7 @@ class NodeWrapper:
     def get_configuration(self):
         return self.configuration
 
-    def recv_node_message(self, message):
+    def recv_message(self, message):
         # to be overriden in sub-class
         pass
 
