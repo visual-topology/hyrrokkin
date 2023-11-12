@@ -122,6 +122,12 @@ class GraphExecutor:
     def get_link(self, link_id):
         return self.network.get_link(link_id)
 
+    def get_node_ids(self):
+        return self.network.get_node_ids()
+
+    def get_link_ids(self):
+        return self.network.get_link_ids()
+
     def recv_node_message(self, node_id, content):
         self.et.schedule_recv_node_message(node_id, content)
 
@@ -171,7 +177,7 @@ class GraphExecutor:
     def set_metadata(self, metadata):
         self.network.set_metadata(metadata)
 
-    def get_metatdata(self):
+    def get_metadata(self):
         return self.network.get_metadata()
 
     def set_package_configuration(self, package_id, properties):
@@ -190,6 +196,9 @@ class GraphExecutor:
 
     def set_package_property(self, package_id, property_name, property_value):
         self.network.set_package_property(package_id, property_name, property_value)
+
+    def get_package_properties(self):
+        return self.network.get_package_properties()
 
     def request_node_execution(self, node_id):
         self.et.schedule_request_node_execution(node_id)

@@ -19,7 +19,7 @@
 
 import logging
 from hyrrokkin.schema.schema import Schema
-from hyrrokkin.executors.graph_executor import GraphExecutor
+from hyrrokkin.executor.graph_executor import GraphExecutor
 
 
 class TopologyRunner:
@@ -32,7 +32,7 @@ class TopologyRunner:
         self.executor.load(topology_file)
 
     def run(self):
-        self.executor.resume(terminate_on_complete=True)
+        self.executor.resume()
 
     def save(self, topology_file):
         self.executor.save(topology_file)

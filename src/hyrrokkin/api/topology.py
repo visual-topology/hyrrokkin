@@ -242,9 +242,7 @@ class Topology:
 
         from_link_type = from_node_type.output_ports[from_port].link_type
 
-
         to_link_type = to_node_type.input_ports[to_port].link_type
-
 
         if from_link_type != to_link_type:
             raise InvalidLinkError(f"incompatible link types (from: {from_link_type}, to: {to_link_type})")
@@ -261,3 +259,80 @@ class Topology:
         self.executor.add_link(link)
         return link_id
 
+    def get_node_ids(self):
+        """
+        Get the ids of all nodes in the topology
+
+        :return: list of node ids
+        """
+        return self.executor.get_node_ids()
+
+    def get_node(self, node_id):
+        """
+        Get the node type and properties for a given node
+
+        :param node_id: the id of the node to retrieve
+
+        :return: tuple (node_type_id,node_properties)
+        """
+        node = self.executor.get_node(node_id)
+        return (node.get_node_type(),node.get_properties())
+
+    def get_link_ids(self):
+        """
+        Get the ids of all links in the topology
+
+        :return: list of link ids
+        """
+        return self.executor.get_link_ids()
+
+    def get_link(self, link_id):
+        """
+        Get the link details for a given link
+
+        :param link_id: the id of the link to retrieve
+
+        :return: tuple (from_node_id,from_port,to_node_id,to_port)
+        """
+        link = self.executor.get_link(link_id)
+        return (link.from_node_id,link.from_port,link.to_node_id,link.to_port)
+
+    def get_output_port_names(self,node_id):
+        """
+        Get the output port names for a given node
+
+        :param node_id: the id of the node
+
+        :return: list of output port names
+        """
+        node = self.executor.get_node(node_id)
+        node_type = self.schema.get_node_type(node.get_node_type())
+        return [name for (name,_) in node_type.get_output_ports()]
+
+    def get_input_port_names(self, node_id):
+        """
+        Get the input port names for a given node
+
+        :param node_id: the id of the node
+
+        :return: list of input port names
+        """
+        node = self.executor.get_node(node_id)
+        node_type = self.schema.get_node_type(node.get_node_type())
+        return [name for (name, _) in node_type.get_input_ports()]
+
+    def get_metadata(self):
+        """
+        Get the metadata of the topology
+
+        :return: dictionary containing the metadata
+        """
+        return self.executor.get_metadata()
+
+    def get_package_properties(self):
+        """
+        Get the package properties for the topology
+
+        :return: dictionary containing the package properties - top level keys are the package-ids
+        """
+        return self.executor.get_package_properties()

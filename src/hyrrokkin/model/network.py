@@ -16,7 +16,7 @@
 #   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+import copy
 import logging
 import os.path
 from copy import deepcopy
@@ -232,6 +232,10 @@ class Network:
             if package_id not in self.package_properties:
                 self.package_properties[package_id] = {}
             self.package_properties[package_id][property_name] = property_value
+
+    def get_package_properties(self):
+        with self.lock:
+            return copy.deepcopy(self.package_properties)
 
     def load(self, from_dict):
         with self.lock:
