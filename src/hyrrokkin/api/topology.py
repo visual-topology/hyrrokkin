@@ -29,14 +29,16 @@ from hyrrokkin.exceptions.invalid_link_error import InvalidLinkError
 
 class Topology:
 
-    def __init__(self, package_list:list[str],
+    def __init__(self, execution_folder, package_list:list[str],
                  status_handler:Callable[[str,str,str,str],None]=lambda target_id, target_type, msg, status: None):
         """
         Create a topology
 
+        :param execution_folder: the folder used to store the topology definition and files
         :param package_list: a list of the paths to python packages containing schemas (a schema.json
         :param status_handler: specify a function to call when a node/configuration sets its status
         """
+        self.execution_folder = execution_folder
         self.schema = Schema()
         for package in package_list:
             self.schema.load_package_from(package + "/schema.json")
@@ -46,7 +48,7 @@ class Topology:
 
     def __create_executor(self):
         if self.executor is None:
-            self.executor = GraphExecutor(self.schema, message_callback=self.message_handler,
+            self.executor = GraphExecutor(self.schema, execution_folder=self.execution_folder, message_callback=self.message_handler,
                                           status_callback=self.status_handler,
                                           node_execution_callback=None,
                                           execution_complete_callback=None)
@@ -58,7 +60,7 @@ class Topology:
         :param from_path: a binary stream, opened for reading
         """
         self.__create_executor()
-        self.executor.load(from_file)
+        self.executor.load_zip(from_file)
 
     def save(self, to_file):
         """

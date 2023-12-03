@@ -21,6 +21,7 @@ import os
 import os.path
 import zipfile
 import json
+import tempfile
 
 from hyrrokkin.model.network import Network
 
@@ -38,7 +39,7 @@ class CodeExporter:
 
     def __init__(self, schema, topology_file, output_folder, output_filename):
         self.schema = schema
-        self.network = Network(self.schema)
+        self.network = Network(self.schema,tempfile.mkdtemp(),)
         self.output_path = os.path.join(output_folder, output_filename)
         os.makedirs(output_folder, exist_ok=True)
         self.storage = {}

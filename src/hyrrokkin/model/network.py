@@ -31,27 +31,25 @@ from hyrrokkin.model.node import Node as Node
 from hyrrokkin.model.link import Link as Link
 
 
-
 class Network:
 
-    def __init__(self, schema):
+    def __init__(self, schema, savedir):
         self.schema = schema
+        self.savedir = savedir
         self.nodes = {}
         self.links = {}
         self.metadata = {}
         self.package_properties = {}
         self.logger = logging.getLogger("network")
         self.lock = RLock()
-        self.savedir = None
         self.tempdir = None
 
     def __del__(self):
-        for dirpath in [self.savedir, self.tempdir]:
-            if dirpath is not None:
-                try:
-                    shutil.rmtree(dirpath)
-                except:
-                    self.logger.exception(f"Unable to remove directory {dirpath} after deleting network")
+        if self.tempdir is not None:
+            try:
+                shutil.rmtree(self.tempdir)
+            except:
+                self.logger.exception(f"Unable to remove directory {self.tempdir} after deleting network")
 
     def get_schema(self):
         return self.schema
@@ -60,10 +58,12 @@ class Network:
         with self.lock:
             node_id = node.get_node_id()
             self.nodes[node_id] = node
+            self.__save_dir()
 
     def move_node(self, node_id, x, y):
         with self.lock:
             self.nodes[node_id].move_to(x, y)
+            self.__save_dir()
 
     def get_node(self, node_id):
         with self.lock:
@@ -114,6 +114,7 @@ class Network:
         with self.lock:
             link_id = link.get_link_id()
             self.links[link_id] = link
+            self.__save_dir()
             return link
 
     def get_link(self, link_id):
@@ -127,6 +128,7 @@ class Network:
     def set_metadata(self, metadata):
         with self.lock:
             self.metadata = deepcopy(metadata)
+        self.__save_dir()
 
     def get_metadata(self):
         with self.lock:
@@ -144,16 +146,19 @@ class Network:
                             shutil.rmtree(file_storage)
                         except:
                             self.logger.exception(f"Unable to remove directory {file_storage} when removing node")
+            self.__save_dir()
 
     def remove_link(self, link_id):
         with self.lock:
             if link_id in self.links:
                 del self.links[link_id]
+            self.__save_dir()
 
     def clear(self):
         with self.lock:
             self.nodes = {}
             self.links = {}
+            self.__save_dir()
 
     def get_input_ports(self, node_id):
         with self.lock:
@@ -206,7 +211,8 @@ class Network:
 
     def set_node_property(self, node_id, property_name, property_value):
         with self.lock:
-            return self.get_node(node_id).set_property(property_name, property_value)
+            self.get_node(node_id).set_property(property_name, property_value)
+            self.__save_dir()
 
     def open_file(self, owner_id, file_type, path, mode, is_temporary, **kwargs):
         if os.path.isabs(path):
@@ -232,6 +238,7 @@ class Network:
             if package_id not in self.package_properties:
                 self.package_properties[package_id] = {}
             self.package_properties[package_id][property_name] = property_value
+            self.save_dir()
 
     def get_package_properties(self):
         with self.lock:
@@ -260,16 +267,23 @@ class Network:
     def load_zip(self, f):
         with self.lock:
             with zipfile.ZipFile(f) as zf:
-                with zf.open("topology.json") as f:
-                    saved_topology = json.loads(f.read().decode("utf-8"))
-                    (loaded_node_ids, loaded_link_ids) = self.load(saved_topology)
+                zf.extract("topology.json", self.savedir)
+
                 storage_paths = [name for name in zf.namelist() if name.startswith("files")]
-                if self.savedir is None:
-                    self.savedir = tempfile.mkdtemp()
+
                 for storage_path in storage_paths:
                     zf.extract(storage_path,self.savedir)
+            return self.load_dir()
 
-            return (loaded_node_ids, loaded_link_ids)
+    def load_dir(self):
+        with self.lock:
+            json_path = os.path.join(self.savedir, "topology.json")
+            if os.path.exists(json_path):
+                with open(json_path) as f:
+                    saved_topology = json.loads(f.read())
+                    (loaded_node_ids, loaded_link_ids) = self.load(saved_topology)
+                    return (loaded_node_ids, loaded_link_ids)
+            return ([],[])
 
     def save(self):
         with self.lock:
@@ -298,3 +312,8 @@ class Network:
             zf.close()
             if to_file is None:
                 return f.getvalue()
+
+    def __save_dir(self):
+        saved = self.save()
+        with open(os.path.join(self.savedir,"topology.json"),"w") as f:
+            f.write(json.dumps(saved))

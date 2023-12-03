@@ -45,8 +45,8 @@ def default_configuration_factory(executor, network, package_id):
 class GraphExecutor:
 
     def __init__(self, schema, message_callback, status_callback, node_execution_callback, execution_complete_callback,
-                 node_factory=default_node_factory, configuration_factory=default_configuration_factory):
-        self.network = Network(schema)
+                 execution_folder=".", node_factory=default_node_factory, configuration_factory=default_configuration_factory):
+        self.network = Network(schema, execution_folder)
         self.queue = queue.Queue()
         self.stop_on_execution_complete = False
         self.message_callback = message_callback
@@ -163,7 +163,18 @@ class GraphExecutor:
     def save_network_only(self):
         return self.network.save()
 
-    def load(self, f):
+    def load_dir(self):
+        (added_node_ids, added_link_ids) = self.network.load_dir()
+        for node_id in added_node_ids:
+            node = self.network.get_node(node_id)
+            if self.et:
+                self.et.schedule_node_added(node)
+        for link_id in added_link_ids:
+            link = self.network.get_link(link_id)
+            if self.et:
+                self.et.schedule_link_added(link)
+
+    def load_zip(self, f):
         (added_node_ids, added_link_ids) = self.network.load_zip(f)
         for node_id in added_node_ids:
             node = self.network.get_node(node_id)
