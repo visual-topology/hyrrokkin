@@ -49,7 +49,7 @@ class CodeExportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             os.makedirs(d, exist_ok=True)
             with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as save_path:
-                t = Topology([numberstream_schema_path])
+                t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
                 t.set_configuration("numberstream", {"offset": 0})
                 t.add_node("n0", "numberstream:number_producer", {"value": 99})
                 t.add_node("n1", "numberstream:number_aggregator", {})

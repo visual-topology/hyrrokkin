@@ -62,7 +62,7 @@ class YamlImportTests(unittest.TestCase):
         super().__init__(*args, **kwargs)
 
     def test1(self):
-        t = Topology([numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
         t.set_metadata({"name":"test topology"})
         t.set_configuration("numberstream",{"key1":"value1"})
         t.add_node("n0", "numberstream:number_producer", {"value": 99})

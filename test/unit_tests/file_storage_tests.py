@@ -34,7 +34,7 @@ class FileStorageTests(unittest.TestCase):
 
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as saved:
 
-            t = Topology([numberstream_schema_path])
+            t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
             t.add_node("n0", "numberstream:number_producer", {"value": 99})
 
             test_string1 = "ABC 123"
@@ -49,7 +49,7 @@ class FileStorageTests(unittest.TestCase):
             with open(saved.name, "wb") as f:
                 t.save(f)
 
-            t2 = Topology([numberstream_schema_path])
+            t2 = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
 
             with open(saved.name, "rb") as f:
                 t2.load(f)
@@ -63,7 +63,7 @@ class FileStorageTests(unittest.TestCase):
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as saved:
             test_string1 = "ABC 123"
             test_string2 = "123 ABC"
-            t = Topology([numberstream_schema_path])
+            t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
             with t.open_configuration_file("numberstream","a.txt","w") as f:
                 f.write(test_string1)
             with t.open_configuration_file("numberstream","a.txt","w",is_temporary=True) as f:
@@ -72,7 +72,7 @@ class FileStorageTests(unittest.TestCase):
             with open(saved.name, "wb") as f:
                 t.save(f)
 
-            t2 = Topology([numberstream_schema_path])
+            t2 = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
 
             with open(saved.name, "rb") as f:
                 t2.load(f)

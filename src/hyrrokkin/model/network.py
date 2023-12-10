@@ -238,7 +238,7 @@ class Network:
             if package_id not in self.package_properties:
                 self.package_properties[package_id] = {}
             self.package_properties[package_id][property_name] = property_value
-            self.save_dir()
+            self.__save_dir()
 
     def get_package_properties(self):
         with self.lock:

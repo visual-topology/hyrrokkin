@@ -48,7 +48,7 @@ class YamlImportTests(unittest.TestCase):
 
 
     def test1(self):
-        t = Topology([numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
         with tempfile.NamedTemporaryFile(suffix=".yaml", delete=True) as yamlf:
             with open(yamlf.name,"w") as of:
                 of.write(test_yaml)
