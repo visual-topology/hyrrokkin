@@ -17,40 +17,26 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-class Node:
+class ExecutionClient:
 
-    def __init__(self, node_id, node_type, x, y, metadata):
-        self.x = x
-        self.y = y
-        self.node_id = node_id
-        self.node_type = node_type
-        self.metadata = metadata
+    def __init__(self, target_id, client_id, message_callback):
+        self.execution_thread = None
+        self.target_id = target_id # typically, ("node",node_id) or ("configuration",configuration_id)
+        self.client_id = client_id
+        self.message_callback = message_callback
+        self.pending_messages = []
 
-    def get_node_id(self):
-        return self.node_id
+    def send_message(self, *msg):
+        if self.execution_thread:
+            self.execution_thread.schedule_recv_message(self.target_id, self.client_id, *msg)
+        else:
+            self.pending_messages.append(msg)
 
-    def move_to(self, x, y):
-        self.x = x
-        self.y = y
+    def connect_execution(self, execution_thread):
+        self.execution_thread = execution_thread
+        for msg in self.pending_messages:
+            self.execution_thread.schedule_recv_message(self.target_id, self.client_id, *msg)
+        self.pending_messages = []
 
-    def get_node_type(self):
-        return self.node_type
-
-    def get_metadata(self):
-        return self.metadata
-
-    def get_xy(self):
-        return (self.x, self.y)
-
-    def update_metadata(self, metadata):
-        self.metadata = metadata
-
-    @staticmethod
-    def load(node_id, node_type, from_dict={}):
-        x = from_dict.get("x", None)
-        y = from_dict.get("y", None)
-        metadata = from_dict.get("metadata", None)
-        return Node(node_id, node_type, x, y, metadata)
-
-    def save(self):
-        return {"x": self.x, "y": self.y, "node_type": self.node_type, "metadata": self.metadata}
+    def disconnect(self):
+        self.execution_thread = None

@@ -16,7 +16,7 @@
 #   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-import copy
+
 import logging
 import os.path
 from copy import deepcopy
@@ -24,12 +24,10 @@ import zipfile
 import json
 from threading import RLock
 import io
-import tempfile
 import shutil
 
 from hyrrokkin.model.node import Node as Node
 from hyrrokkin.model.link import Link as Link
-
 
 class Network:
 
@@ -39,7 +37,6 @@ class Network:
         self.nodes = {}
         self.links = {}
         self.metadata = {}
-        self.package_properties = {}
         self.logger = logging.getLogger("network")
         self.lock = RLock()
         self.tempdir = None
@@ -50,6 +47,9 @@ class Network:
                 shutil.rmtree(self.tempdir)
             except:
                 self.logger.exception(f"Unable to remove directory {self.tempdir} after deleting network")
+
+    def get_directory(self):
+        return self.savedir
 
     def get_schema(self):
         return self.schema
@@ -201,54 +201,10 @@ class Network:
                 node_ids.remove(link.from_node_id)
             return node_ids
 
-    def get_node_property(self, node_id, property_name):
-        with self.lock:
-            node = self.get_node(node_id)
-            if node:
-                return node.get_property(property_name)
-            else:
-                return None
-
-    def set_node_property(self, node_id, property_name, property_value):
-        with self.lock:
-            self.get_node(node_id).set_property(property_name, property_value)
-            self.__save_dir()
-
-    def open_file(self, owner_id, file_type, path, mode, is_temporary, **kwargs):
-        if os.path.isabs(path):
-            raise ValueError(f"Path {path} to be opened is absolute, but must be relative")
-        if is_temporary:
-            if self.tempdir is None:
-                self.tempdir = tempfile.mkdtemp()
-            filepath = os.path.join(self.tempdir,"files",file_type,owner_id,path)
-        else:
-            if self.savedir is None:
-                self.savedir = tempfile.mkdtemp()
-            filepath = os.path.join(self.savedir,"files",file_type,owner_id,path)
-        parent_dir = os.path.split(filepath)[0]
-        os.makedirs(parent_dir, exist_ok=True)
-        return open(filepath, mode=mode, **kwargs)
-
-    def get_package_property(self, package_id, property_name):
-        with self.lock:
-            return self.package_properties.get(package_id, {}).get(property_name, {})
-
-    def set_package_property(self, package_id, property_name, property_value):
-        with self.lock:
-            if package_id not in self.package_properties:
-                self.package_properties[package_id] = {}
-            self.package_properties[package_id][property_name] = property_value
-            self.__save_dir()
-
-    def get_package_properties(self):
-        with self.lock:
-            return copy.deepcopy(self.package_properties)
-
     def load(self, from_dict):
         with self.lock:
             added_node_ids = []
             added_link_ids = []
-            self.package_properties = from_dict.get("package_properties", {})
 
             nodes = from_dict.get("nodes", {})
             # TODO deal with id-conflicts by renaming the incoming nodes and links
@@ -269,7 +225,7 @@ class Network:
             with zipfile.ZipFile(f) as zf:
                 zf.extract("topology.json", self.savedir)
 
-                storage_paths = [name for name in zf.namelist() if name.startswith("files")]
+                storage_paths = [name for name in zf.namelist() if name.startswith("node") or name.startswith("package")]
 
                 for storage_path in storage_paths:
                     zf.extract(storage_path,self.savedir)
@@ -287,7 +243,7 @@ class Network:
 
     def save(self):
         with self.lock:
-            saved = {"nodes": {}, "links": {}, "package_properties": self.package_properties}
+            saved = {"nodes": {}, "links": {}}
 
             for (node_id, node) in self.nodes.items():
                 saved["nodes"][node_id] = node.save()
@@ -304,8 +260,8 @@ class Network:
             f = to_file if to_file else io.BytesIO()
             zf = zipfile.ZipFile(f, "w")
             zf.writestr("topology.json", json.dumps(saved))
-            if self.savedir is not None:
-                for root, dirs, files in os.walk(os.path.join(self.savedir,"files")):
+            for subdir in ["node","package"]:
+                for root, dirs, files in os.walk(os.path.join(self.savedir,subdir)):
                     for file in files:
                         entry = os.path.relpath(os.path.join(root,file),self.savedir)
                         zf.write(os.path.join(self.savedir,entry),entry)
@@ -317,3 +273,4 @@ class Network:
         saved = self.save()
         with open(os.path.join(self.savedir,"topology.json"),"w") as f:
             f.write(json.dumps(saved))
+

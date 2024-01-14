@@ -23,7 +23,7 @@ import tempfile
 
 from hyrrokkin.api.topology import Topology
 
-numberstream_schema_path = "hyrrokkin_example_packages.numberstream"
+numberstream_package = "hyrrokkin_example_packages.numberstream"
 
 class FileStorageTests(unittest.TestCase):
 
@@ -34,53 +34,54 @@ class FileStorageTests(unittest.TestCase):
 
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as saved:
 
-            t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
+            t = Topology(tempfile.mkdtemp(),[numberstream_package])
             t.add_node("n0", "numberstream:number_producer", {"value": 99})
 
             test_string1 = "ABC 123"
-            test_string2 = "123 ABC"
+            test_binary1 = b"34723974"
 
-            with t.open_node_file("n0","a/b/c.txt",mode="w") as f:
-                f.write(test_string1)
+            t.set_node_data("n0", "abc", test_string1)
+            t.set_node_data("n0", "abc0", test_binary1)
 
-            with t.open_node_file("n0", "a/b/c.txt", mode="w", is_temporary=True) as f:
-                f.write(test_string2)
+            t.set_node_data("n0", "abc1", test_string1)
+            t.set_node_data("n0", "abc1", None)
+
+            self.assertEqual(test_string1, t.get_node_data("n0", "abc"))
+            self.assertEqual(test_binary1, t.get_node_data("n0", "abc0"))
+            self.assertIsNone(t.get_node_data("n0", "abc1"))
 
             with open(saved.name, "wb") as f:
                 t.save(f)
 
-            t2 = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
+            t2 = Topology(tempfile.mkdtemp(),[numberstream_package])
 
             with open(saved.name, "rb") as f:
                 t2.load(f)
 
-            with t2.open_node_file("n0","a/b/c.txt","r") as f:
-                self.assertEqual(test_string1,f.read())
+            self.assertEqual(test_string1, t2.get_node_data("n0", "abc"))
+            self.assertEqual(test_binary1, t2.get_node_data("n0", "abc0"))
+            self.assertIsNone(t2.get_node_data("n0", "abc1"))
 
-            self.assertRaises(FileNotFoundError,lambda: t2.open_node_file("n0", "a/b/c.txt", "r", is_temporary=True))
 
     def test2(self):
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as saved:
             test_string1 = "ABC 123"
-            test_string2 = "123 ABC"
-            t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
-            with t.open_configuration_file("numberstream","a.txt","w") as f:
-                f.write(test_string1)
-            with t.open_configuration_file("numberstream","a.txt","w",is_temporary=True) as f:
-                f.write(test_string2)
+            test_binary1 = b"34723974"
+
+            t = Topology(tempfile.mkdtemp(),[numberstream_package])
+            t.set_package_data("numberstream","abc",test_string1)
+            t.set_package_data("numberstream","abc_0", test_binary1)
 
             with open(saved.name, "wb") as f:
                 t.save(f)
 
-            t2 = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
+            t2 = Topology(tempfile.mkdtemp(),[numberstream_package])
 
             with open(saved.name, "rb") as f:
                 t2.load(f)
 
-            with t2.open_configuration_file("numberstream", "a.txt", "r") as f:
-                self.assertEqual(test_string1,f.read())
-
-            self.assertRaises(FileNotFoundError, lambda: t2.open_configuration_file("n0", "a.txt", "r", is_temporary=True))
+            self.assertEqual(test_string1,t2.get_package_data("numberstream","abc"))
+            self.assertEqual(test_binary1, t2.get_package_data("numberstream", "abc_0"))
 
 
 if __name__ == '__main__':

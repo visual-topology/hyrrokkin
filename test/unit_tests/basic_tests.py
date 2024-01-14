@@ -20,10 +20,11 @@
 
 import unittest
 import tempfile
+import json
 
 from hyrrokkin.api.topology import Topology
 
-numberstream_schema_path = "hyrrokkin_example_packages.numberstream"
+numberstream_package = "hyrrokkin_example_packages.numberstream"
 
 class BasicTests(unittest.TestCase):
 
@@ -31,7 +32,7 @@ class BasicTests(unittest.TestCase):
         super().__init__(*args,**kwargs)
 
     def test1(self):
-        t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(),[numberstream_package])
         t.add_node("n0","numberstream:number_producer",{"value":99})
         t.add_node("n1", "numberstream:number_transformer", {"fn":"lambda x: x*2"})
         t.add_node("n2","numberstream:number_aggregator", {})
@@ -40,18 +41,26 @@ class BasicTests(unittest.TestCase):
         t.add_link("l1", "n1", "data_out", "n2", "data_in")
         t.add_link("l2", "n2", "data_out", "n3", "data_in")
 
+        received_messages = []
+        sender = t.attach_node_client("n3","test",lambda *msg: received_messages.append(msg))
+        sender("Hello","World")
+        self.assertEqual(len(received_messages), 0)
+
         t.run(cache_outputs_for_nodes="*")
+
+        self.assertEqual(len(received_messages),1)
+        self.assertEqual(received_messages[0],("Echo","Hello","World"))
 
         self.assertEqual({"data_out": 99},t.get_node_outputs("n0"))
         self.assertEqual({"data_out": 198}, t.get_node_outputs("n1"))
         self.assertEqual({"data_out": 198}, t.get_node_outputs("n2"))
-        self.assertEqual([198],t.get_node_property("n3","results"))
+        self.assertEqual(json.dumps([198]),t.get_node_data("n3","results"))
 
     def test2(self):
 
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as saved:
 
-            t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
+            t = Topology(tempfile.mkdtemp(),[numberstream_package])
             t.add_node("n0", "numberstream:number_producer", {"value": 99})
             t.add_node("n1", "numberstream:number_aggregator", {})
             t.add_link("l0", "n0", "data_out", "n1", "data_in")
@@ -59,7 +68,7 @@ class BasicTests(unittest.TestCase):
             with open(saved.name, "wb") as f:
                 t.save(f)
 
-            t2 = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
+            t2 = Topology(tempfile.mkdtemp(),[numberstream_package])
 
             with open(saved.name, "rb") as f:
                 t2.load(f)
@@ -69,7 +78,7 @@ class BasicTests(unittest.TestCase):
             self.assertEqual({"data_out":99},t2.get_node_outputs("n0"))
 
     def test3(self):
-        t = Topology(tempfile.mkdtemp(), [numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(), [numberstream_package])
         t.add_node("n0","numberstream:number_producer",{"value":99})
         t.add_node("n1","numberstream:number_aggregator", {})
         t.add_link("l0","n0","data_out","n1","data_in")
@@ -85,7 +94,7 @@ class BasicTests(unittest.TestCase):
         self.assertEqual({"data_out": 100}, t.get_node_outputs("n1"))
 
     def test4(self):
-        t = Topology(tempfile.mkdtemp(), [numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(), [numberstream_package])
         t.add_node("n0a","numberstream:number_producer", {"value" : 99})
         t.add_node("n0b","numberstream:number_producer", {"value" : 100})
         t.add_node("n1","numberstream:number_aggregator", {})
@@ -99,7 +108,7 @@ class BasicTests(unittest.TestCase):
         self.assertEqual({"data_out": 199}, t.get_node_outputs("n1"))
 
     def test5(self):
-        t = Topology(tempfile.mkdtemp(), [numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(), [numberstream_package])
         t.add_node("n0","numberstream:number_pullstream_producer",{"min_value":0,"max_value":5})
         t.add_node("n1","numberstream:number_pullstream_transformer", { "fn": "lambda x:x+1"})
         t.add_node("n2","numberstream:number_pullstream_aggregator", { "fn": "lambda x: sum(x)"})
@@ -111,7 +120,7 @@ class BasicTests(unittest.TestCase):
         self.assertEqual({"data_out":21},t.get_node_outputs("n2"))
 
     def test5a(self):
-        t = Topology(tempfile.mkdtemp(), [numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(), [numberstream_package])
         t.add_node("n0", "numberstream:number_pushstream_producer", {"min_value": 0, "max_value": 5})
         t.add_node("n1", "numberstream:number_pushstream_transformer", {"fn": "lambda x:x*2"})
         t.add_node("n2", "numberstream:number_pushstream_aggregator", {"fn": "lambda x: sum(x)"})
@@ -123,7 +132,7 @@ class BasicTests(unittest.TestCase):
         self.assertEqual({"data_out": 30}, t.get_node_outputs("n2"))
 
     def test5b(self):
-        t = Topology(tempfile.mkdtemp(), [numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(), [numberstream_package])
         t.add_node("n0a", "numberstream:number_pushstream_producer", {"min_value": 0, "max_value": 5})
         t.add_node("n0b", "numberstream:number_pushstream_producer", {"min_value": 0, "max_value": 4})
         t.add_node("n1", "numberstream:number_pushstream_aggregator", {"fn": "lambda x: sum(x)"})
@@ -135,7 +144,7 @@ class BasicTests(unittest.TestCase):
         self.assertEqual({"data_out": 25}, t.get_node_outputs("n1"))
 
     def test6(self):
-        t = Topology(tempfile.mkdtemp(), [numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(), [numberstream_package])
         t.add_node("n0", "numberstream:number_pullstream_producer", {"min_value": 0, "max_value": 5})
         t.add_node("n1", "numberstream:number_pullstream_aggregator", {"fn": "lambda x: sum(x)"})
         t.add_node("n2", "numberstream:number_pullstream_aggregator", {"fn": "lambda x: len(x)"})

@@ -26,7 +26,7 @@ from hyrrokkin.utils.yaml_exporter import export_to_yaml
 
 logging.basicConfig(level=logging.INFO)
 
-numberstream_schema_path = "hyrrokkin_example_packages.numberstream"
+numberstream_package = "hyrrokkin_example_packages.numberstream"
 
 test_yaml = """
 metadata:
@@ -62,9 +62,9 @@ class YamlImportTests(unittest.TestCase):
         super().__init__(*args, **kwargs)
 
     def test1(self):
-        t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(),[numberstream_package])
         t.set_metadata({"name":"test topology"})
-        t.set_configuration("numberstream",{"key1":"value1"})
+        t.set_package_property("numberstream","key1","value1")
         t.add_node("n0", "numberstream:number_producer", {"value": 99})
         t.add_node("n1", "numberstream:number_transformer", {"fn": "lambda x: x*2"})
         t.add_node("n2", "numberstream:number_aggregator", {})

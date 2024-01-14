@@ -20,6 +20,8 @@
 import logging
 import os.path
 
+from hyrrokkin.utils.data_store_utils import DataStoreUtils
+
 class NodeServices:
 
     def __init__(self, node_id: str, working_dir, configuration=None):
@@ -53,16 +55,21 @@ class NodeServices:
             raise exn
 
     def get_property(self, property_name, default_value=None):
-        return self.properties.get(property_name, default_value)
+        dsu = DataStoreUtils(self.working_dir)
+        v = dsu.get_node_property(self.node_id, property_name)
+        return v if v is not None else default_value
 
     def set_property(self, property_name, property_value):
-        self.properties[property_name] = property_value
+        dsu = DataStoreUtils(self.working_dir)
+        dsu.set_node_property(self.node_id, property_name, property_value)
 
-    def open_file(self, path, mode="r", is_temporary=False, **kwargs):
-        path = os.path.join(self.temp_dir if is_temporary else self.working_dir,"files","node",self.node_id,path)
-        folder = os.path.split(path)[0]
-        os.makedirs(folder,exist_ok=True)
-        return open(path, mode=mode, **kwargs)
+    def get_data(self, key):
+        dsu = DataStoreUtils(self.working_dir)
+        return dsu.get_node_data(self.node_id, key)
+
+    def set_data(self, key, data):
+        dsu = DataStoreUtils(self.working_dir)
+        dsu.set_node_data(self.node_id, key, data)
 
     def get_configuration(self):
         return self.configuration

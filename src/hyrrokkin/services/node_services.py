@@ -68,18 +68,11 @@ class NodeServices:
         """
         self.wrapper.set_status(StatusStates.clear.value, "")
 
-    def raise_execution_error(self, error_message:str, from_exn:Exception=None):
+    def request_execution(self):
         """
-        Raise an exception due to an execution failure
-
-        :param error_message: short text describing the failure
-        :param from_exn: optional, an exception that is the cause of the failure
+        Request that this node be executed
         """
-        exn = NodeExecutionFailed(self.node_id, error_message)
-        if from_exn:
-            raise exn from from_exn
-        else:
-            raise exn
+        self.wrapper.request_execution()
 
     def get_property(self, property_name:str, default_value=None):
         """
@@ -89,11 +82,7 @@ class NodeServices:
         :param default_value: a default value to return if the named property is not defined on the node
         :return: property value
         """
-        stored_value = self.wrapper.get_property(property_name)
-        if stored_value is None:
-            return default_value
-        else:
-            return stored_value
+        return self.wrapper.get_property(property_name, default_value)
 
     def set_property(self, property_name:str, property_value):
         """
@@ -106,23 +95,24 @@ class NodeServices:
         """
         self.wrapper.set_property(property_name, property_value)
 
-    def open_file(self, path:str, mode:str="r", is_temporary=False, **kwargs) -> typing.Union[typing.TextIO,typing.BinaryIO]:
+    def get_data(self, key:str) -> typing.Union[bytes,str]:
         """
-        Open a file a within this node's filestore.
+        Get binary or string data associated with this node.
 
-        If is_temporary is False, data written to these files will be persisted when the topology to which this node belongs is saved and reloaded.
+        :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
 
-        :param path: the relative path to the file within the filestore
-        :param mode: the mode with which the file is to be opened
-        :param is_temporary: whether the file should be persisted when the network is saved
-        :param kwargs: other arguments to the open call
-
-        :return: opened file
-        :raises: exception if file cannot be opened
-
-        :notes: This method calls Python's builtin open function.  For a description of the available arguments to the open function, see https://docs.python.org/3/library/functions.html#open
+        :return: data or None if no data is associated with the key
         """
-        return self.wrapper.open_file(path, mode, is_temporary, **kwargs)
+        return self.wrapper.get_data(key)
+
+    def set_data(self, key:str, data:typing.Union[bytes,str]):
+        """
+        Set binary or string data associated with this node.
+
+        :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
+        :param data: data to be stored
+        """
+        self.wrapper.set_data(key, data)
 
     def get_configuration(self) -> typing.Union[None,ConfigurationBase]:
         """

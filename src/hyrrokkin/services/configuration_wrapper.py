@@ -17,39 +17,55 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import copy
 import logging
 
-class ConfigurationWrapper:
+from hyrrokkin.utils.data_store_utils import DataStoreUtils
+from .wrapper import Wrapper
+
+class ConfigurationWrapper(Wrapper):
 
     def __init__(self, executor, network, package_id, services):
-        self.executor = executor
-        self.network = network
+        super().__init__(executor, network)
         self.package_id = package_id
-        self.instance = None
         self.services = services
+
+        dsu = DataStoreUtils(self.network.get_directory())
+        self.properties = dsu.get_package_properties(self.package_id)
+
         self.message_handler = None
         self.logger = logging.getLogger(f"ConfigurationWrapper[{package_id}]")
 
-    def set_instance(self, instance):
-        self.instance = instance
+    def get_id(self):
+        return self.package_id
 
-    def get_instance(self):
-        return self.instance
+    def get_type(self):
+        return "configuration"
+
+    def __repr__(self):
+        return f"ConfigurationWrapper({self.package_id})"
+
+    def get_property(self, property_name, default_value=None):
+        return self.properties.get(property_name, default_value)
 
     def set_property(self, property_name, property_value):
-        property_value = copy.deepcopy(property_value)
-        self.network.set_package_property(self.package_id, property_name, property_value)
-
-    def get_property(self, property_name):
-        return self.network.get_package_property(self.package_id, property_name)
+        if property_value is not None:
+            self.properties[property_name] = property_value
+        else:
+            if property_name in self.properties:
+                del self.properties[property_name]
+        dsu = DataStoreUtils(self.network.get_directory())
+        dsu.set_package_property(self.package_id, property_name, property_value)
 
     def set_status(self, state, status_message):
         pass
 
-    def open_file(self, path, mode, is_temporary, **kwargs):
-        return self.network.open_file(self.package_id, "configuration", path, mode, is_temporary, **kwargs)
+    def get_data(self, key):
+        dsu = DataStoreUtils(self.network.get_directory())
+        return dsu.get_package_data(self.package_id, key)
 
-    def recv_message(self, message):
-        # to be overriden in sub-class
-        pass
+    def set_data(self, key, data):
+        dsu = DataStoreUtils(self.network.get_directory())
+        dsu.set_package_data(self.package_id, key, data)
+
+
+

@@ -25,33 +25,33 @@ from hyrrokkin.schema.schema import Schema
 from hyrrokkin.model.node import Node
 from hyrrokkin.model.link import Link
 from hyrrokkin.exceptions.invalid_link_error import InvalidLinkError
-
+from hyrrokkin.utils.data_store_utils import DataStoreUtils
 
 class Topology:
 
     def __init__(self, execution_folder, package_list:list[str],
-                 status_handler:Callable[[str,str,str,str],None]=lambda target_id, target_type, msg, status: None):
+                 status_handler:Callable[[str,str,str,str],None]=lambda target_id, target_type, msg, status: None,
+                 execution_handler:Callable[[str,str,Union[Exception,None]],None]=lambda node_id, state, exception: None):
         """
         Create a topology
 
         :param execution_folder: the folder used to store the topology definition and files
         :param package_list: a list of the paths to python packages containing schemas (a schema.json
         :param status_handler: specify a function to call when a node/configuration sets its status
+        :param execution_handler: specify a function to call when a node changes its execution status
         """
         self.execution_folder = execution_folder
+        self.dsu = DataStoreUtils(self.execution_folder)
         self.schema = Schema()
         for package in package_list:
             self.schema.load_package_from(package + "/schema.json")
         self.status_handler = status_handler
-        self.message_handler = lambda target_id, target_type, msg, for_session_id, except_session_id: None
-        self.executor = None
+        self.execution_handler = execution_handler
 
-    def __create_executor(self):
-        if self.executor is None:
-            self.executor = GraphExecutor(self.schema, execution_folder=self.execution_folder, message_callback=self.message_handler,
-                                          status_callback=self.status_handler,
-                                          node_execution_callback=None,
-                                          execution_complete_callback=None)
+        self.executor = GraphExecutor(self.schema, execution_folder=self.execution_folder,
+                                      status_callback=self.status_handler,
+                                      node_execution_callback=self.execution_handler,
+                                      execution_complete_callback=None)
 
     def load(self, from_file:io.BytesIO):
         """
@@ -59,7 +59,6 @@ class Topology:
 
         :param from_path: a binary stream, opened for reading
         """
-        self.__create_executor()
         self.executor.load_zip(from_file)
 
     def save(self, to_file):
@@ -68,10 +67,52 @@ class Topology:
 
        :param to_file: a binary stream, opened for writing
        """
-        self.__create_executor()
         self.executor.save(to_file)
 
-    def run(self, execute_to_nodes:Union[list[str],Literal["*"]]="*", cache_outputs_for_nodes:Union[list[str],Literal["*"]]=[]):
+    def attach_node_client(self, node_id, client_id, message_callback):
+        """
+        Attach a client instance to a node
+
+        :param node_id: the node to which the client is to be attached
+        :param client_id: an identifier for the client
+        :param message_callback: a function that is called when a message is sent from the node to this client
+
+        :return: a function that can be used to send messages to the node
+        """
+        return self.executor.attach_client(("node",node_id), client_id, message_callback)
+
+    def detach_node_client(self, node_id, client_id):
+        """
+        Detach a client instance from a node
+
+        :param node_id: the node to which the client is to be attached
+        :param client_id: an identifier for the client
+        """
+        return self.executor.detach_client(("node",node_id), client_id)
+
+    def attach_configuration_client(self, package_id, client_id, message_callback):
+        """
+        Attach a client instance to a package configuration
+
+        :param package_id: the package configuration to which the client is to be attached
+        :param client_id: an identifier for the client
+        :param message_callback: a function that is called when a message is sent from the node to this client
+
+        :return: a function that can be used to send messages to the node
+        """
+        return self.executor.attach_client(("configuration",package_id), client_id, message_callback)
+
+    def detach_configuration_client(self, package_id, client_id):
+        """
+        Detach a client instance from a package configuration
+
+        :param package_id: the node to which the client is to be attached
+        :param client_id: an identifier for the client
+        """
+        return self.executor.detach_client(("configuration",package_id), client_id)
+
+    def run(self, execute_to_nodes:Union[list[str],Literal["*"]]="*",
+            cache_outputs_for_nodes:Union[list[str],Literal["*"]]=[]):
         """
         Run the topology, blocking until the execution completes
 
@@ -80,7 +121,6 @@ class Topology:
         :param cache_outputs_for_nodes: a list of node ids to cache outputs for, or "*" to cache outputs for all nodes.
             If a node's outputs are cached, they will be re-used in future runs and can be retrieved after a run completes.
         """
-        self.__create_executor()
         self.executor.run(terminate_on_complete=True, execute_to_nodes=execute_to_nodes, cache_outputs_for_nodes=cache_outputs_for_nodes)
 
     def get_node_outputs(self, node_id: str) -> Union[dict[str,Any],None]:
@@ -91,7 +131,6 @@ class Topology:
 
         :notes: if no outputs are cached for the node, None is returned
         """
-        self.__create_executor()
         return self.executor.state.node_outputs.get(node_id,None)
 
     def stop(self) -> None:
@@ -100,7 +139,6 @@ class Topology:
 
         :notes: the run method will return once any current node executions complete
         """
-        self.__create_executor()
         self.executor.stop()
 
     def set_metadata(self, metadata:dict[str,Any]):
@@ -111,18 +149,8 @@ class Topology:
 
         :notes: the following keys will be understood by tooling: name, version, description, author
         """
-        self.__create_executor()
         self.executor.set_metadata(metadata)
 
-    def set_configuration(self, package_id:str, properties:dict[str,Any]):
-        """
-        Set the properties for a package's configuration
-
-        :param package_id: the package identifier
-        :param properties: a dictionary containing property names and values, must be JSON serialisable
-        """
-        self.__create_executor()
-        self.executor.set_package_configuration(package_id, properties)
 
     def add_node(self, node_id, node_type, properties) -> str:
         """
@@ -132,8 +160,8 @@ class Topology:
         :param node_type: the type of the node, a string of the form package_id:node_type_id
         :param properties:  dictionary containing property names and values, must be JSON serialisable
         """
-        self.__create_executor()
-        node = Node(node_id, node_type, x=0, y=0, metadata={}, properties=properties)
+        self.dsu.set_node_properties(node_id, properties)
+        node = Node(node_id, node_type, x=0, y=0, metadata={})
         self.executor.add_node(node)
         return node_id
 
@@ -144,8 +172,8 @@ class Topology:
         :param node_id: the node's identifier
         :param property_name: the name of the property
         """
-        self.__create_executor()
-        return self.executor.get_node_property(node_id, property_name)
+
+        return self.dsu.get_node_property(node_id, property_name)
 
     def set_node_property(self, node_id:str, property_name:str, property_value:Any):
         """
@@ -155,46 +183,71 @@ class Topology:
         :param property_name: the name of the property
         :param property_value: the value of the property, must be JSON serialisable
         """
-        self.__create_executor()
-        self.executor.set_node_property(node_id, property_name, property_value)
+        self.dsu.set_node_property(node_id, property_name, property_value)
+        if self.executor:
+            self.executor.mark_dirty_from(node_id)
 
-    def open_node_file(self, node_id, path, mode, is_temporary=False, **kwargs):
-        """Open a file within a node's filestore.
-
-        If is_temporary is False, data written to these files will be persisted when the topology to which this node belongs is saved and reloaded.
-
-        :param node_id: the id of the node to which the file will belong
-        :param path: the relative path to the file within the filestore
-        :param mode: the mode with which the file is to be opened
-        :param is_temporary: whether the file should be persisted when the topology is saved
-        :param kwargs: other arguments to the open call
-
-        :return: opened file
-        :raises: exception if file cannot be opened
-
-        :notes: This method calls Python's builtin open function.  For a description of the available arguments to the open function, see https://docs.python.org/3/library/functions.html#open
+    def get_node_data(self, node_id: str, key: str) -> Union[bytes, str, None]:
         """
-        self.__create_executor()
-        return self.executor.network.open_file(node_id, "node", path, mode, is_temporary, **kwargs)
+        Get binary or string data associated with this node.
 
-    def open_configuration_file(self, package_id, path, mode, is_temporary=False, **kwargs):
-        """Open a file within a package configuration's filestore.
+        :param node_id: node identifier
+        :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
 
-        If is_temporary is False, data written to these files will be persisted when the topology to which this configuration belongs is saved and reloaded.
-
-        :param package_id: the id of the package to which the file will belong
-        :param path: the relative path to the file within the filestore
-        :param mode: the mode with which the file is to be opened
-        :param is_temporary: whether the file should be persisted when the topology is saved
-        :param kwargs: other arguments to the open call
-
-        :return: opened file
-        :raises: exception if file cannot be opened
-
-        :notes: This method calls Python's builtin open function.  For a description of the available arguments to the open function, see https://docs.python.org/3/library/functions.html#open
+        :return: data or None if no data is associated with the key
         """
-        self.__create_executor()
-        return self.executor.network.open_file(package_id, "configuration", path, mode, is_temporary, **kwargs)
+        return self.dsu.get_node_data(node_id, key)
+
+    def set_node_data(self, node_id: str, key: str, data: Union[bytes, str, None]):
+        """
+        Set binary or string data associated with this node.
+
+        :param node_id: node identifier
+        :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
+        :param data: data to be stored
+        """
+        self.dsu.set_node_data(node_id, key, data)
+        self.executor.mark_dirty_from(node_id)
+
+    def get_package_property(self, package_id:str, property_name:str):
+        """
+        Gets the property of a package, or None if the package or package property is not set
+
+        :param package_id: the package's identifier
+        :param property_name: the name of the property
+        """
+        return self.dsu.get_package_property(package_id, property_name)
+
+    def set_package_property(self, package_id:str, property_name:str, property_value:Any):
+        """
+        Update the property of a package
+
+        :param package_id: the packae's identifier
+        :param property_name: the name of the property
+        :param property_value: the value of the property, must be JSON serialisable
+        """
+        self.dsu.set_package_property(package_id, property_name, property_value)
+
+    def get_package_data(self, package_id: str, key: str) -> Union[bytes, str, None]:
+        """
+        Get binary or string data associated with a package configuration.
+
+        :param package_id: package identifier
+        :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
+
+        :return: data or None if no data is associated with the key
+        """
+        return self.dsu.get_package_data(package_id, key)
+
+    def set_package_data(self, package_id: str, key: str, data: Union[bytes, str, None]):
+        """
+        Set binary or string data associated with this node.
+
+        :param package_id: package identifier
+        :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
+        :param data: data to be stored
+        """
+        self.dsu.set_package_data(package_id, key, data)
 
     def add_link(self, link_id:str, from_node_id:str, from_port:Union[str,None], to_node_id:str, to_port:Union[str,None]) -> str:
         """
@@ -208,7 +261,6 @@ class Topology:
 
         :raises InvalidLinkError: if the link cannot be added
         """
-        self.__create_executor()
         from_node = self.executor.get_node(from_node_id)
         if from_node is None:
             raise InvalidLinkError(f"{from_node_id} does not exist")
@@ -269,16 +321,17 @@ class Topology:
         """
         return self.executor.get_node_ids()
 
-    def get_node(self, node_id):
+    def get_node_type(self, node_id):
         """
-        Get the node type and properties for a given node
+        Get the node package and type for a given node
 
         :param node_id: the id of the node to retrieve
 
-        :return: tuple (node_type_id,node_properties)
+        :return: tuple (package_id, node_type_id)
         """
         node = self.executor.get_node(node_id)
-        return (node.get_node_type(),node.get_properties())
+        node_type = node.get_node_type()
+        return self.schema.split_descriptor(node_type)
 
     def get_link_ids(self):
         """
@@ -331,10 +384,22 @@ class Topology:
         """
         return self.executor.get_metadata()
 
-    def get_package_properties(self):
+    def get_node_properties(self, node_id):
+        """
+        Get the node properties for the topology
+
+        :param node_id: the node identifier
+
+        :return: dictionary containing the properties defined for that package
+        """
+        return self.dsu.get_node_properties(node_id)
+
+    def get_package_properties(self, package_id):
         """
         Get the package properties for the topology
 
-        :return: dictionary containing the package properties - top level keys are the package-ids
+        :param package_id: the package identifier
+
+        :return: dictionary containing the properties defined for that package
         """
-        return self.executor.get_package_properties()
+        return self.dsu.get_package_properties(package_id)

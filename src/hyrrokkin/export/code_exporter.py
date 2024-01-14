@@ -24,9 +24,12 @@ import json
 import tempfile
 
 from hyrrokkin.model.network import Network
+from hyrrokkin.utils.data_store_utils import DataStoreUtils
 
-dummy_services_paths = [os.path.join(os.path.split(__file__)[0], "../services/cli_node_services.py"),
-                        os.path.join(os.path.split(__file__)[0], "../services/cli_configuration_services.py")]
+dummy_services_paths = [
+    os.path.join(os.path.split(__file__)[0], "../utils/data_store_utils.py"),
+    os.path.join(os.path.split(__file__)[0], "../services/cli_node_services.py"),
+    os.path.join(os.path.split(__file__)[0], "../services/cli_configuration_services.py")]
 
 
 def get_import_for(classname):
@@ -39,25 +42,20 @@ class CodeExporter:
 
     def __init__(self, schema, topology_file, output_folder, output_filename):
         self.schema = schema
-        self.network = Network(self.schema,tempfile.mkdtemp(),)
+        self.network = Network(self.schema,tempfile.mkdtemp())
+        self.output_folder = output_folder
         self.output_path = os.path.join(output_folder, output_filename)
         os.makedirs(output_folder, exist_ok=True)
-        self.storage = {}
         with zipfile.ZipFile(topology_file, "r") as zf:
             with zf.open("topology.json") as f:
                 content = f.read().decode("utf-8")
+                # with open(os.path.join(output_folder,"topology.json"),"w") as of:
+                #    of.write(content)
                 self.network.load(json.loads(content))
 
-            storage_paths = [name for name in zf.namelist() if name.startswith("node_storage")]
+            storage_paths = [name for name in zf.namelist() if name.startswith("node") or name.startswith("package")]
             zf.extractall(output_folder, storage_paths)
-            for path in storage_paths:
-                splits = path.split("/")
-                if len(splits) == 3:
-                    node_id = splits[1]
-                    property_name = splits[2]
-                    if node_id not in self.storage:
-                        self.storage[node_id] = {}
-                    self.storage[node_id][property_name] = path
+        self.dsu = DataStoreUtils(self.output_folder)
 
     def export(self):
 
@@ -91,12 +89,6 @@ class CodeExporter:
                 package_id = package.get_id()
 
                 code += f"{package_id}_service = ConfigurationServices('{package_id}','.')\n"
-                if package_id in self.network.package_properties:
-                    package_properties = self.network.package_properties[package_id]
-                    for (property_name, property_value) in package_properties.items():
-                        jsonv = json.dumps(property_value)
-                        code += f"{package_id}_service.set_property('{property_name}',{jsonv})\n"
-
                 code += f"{package_id}_configuration = {classname}({package_id}_service)\n"
                 configured_packages.add(package_id)
 
@@ -119,14 +111,6 @@ class CodeExporter:
             else:
                 code += f"\t{node_id}_service = NodeServices('{node_id}','.')\n"
 
-            for (property_name, property_value) in node.get_properties().items():
-                jsonv = json.dumps(property_value)
-                code += f"\t{node_id}_service.set_property('{property_name}',{jsonv})\n"
-
-            if node_id in self.storage:
-                for (property_name, path) in self.storage[node_id].items():
-                    code += f"\twith open('{path}','rb') as f:\n"
-                    code += f"\t\t{node_id}_service.set_property('{property_name}',f.read())\n"
             code += f"\t{node_id} = {classname}({node_id}_service)\n"
             inputs = []
             for (input_port_name, _) in node_type.get_input_ports():

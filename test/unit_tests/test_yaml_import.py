@@ -26,7 +26,7 @@ from hyrrokkin.utils.yaml_importer import import_from_yaml
 
 logging.basicConfig(level=logging.INFO)
 
-numberstream_schema_path = "hyrrokkin_example_packages.numberstream"
+numberstream_package = "hyrrokkin_example_packages.numberstream"
 
 test_yaml = """
 nodes:
@@ -48,7 +48,7 @@ class YamlImportTests(unittest.TestCase):
 
 
     def test1(self):
-        t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
+        t = Topology(tempfile.mkdtemp(),[numberstream_package])
         with tempfile.NamedTemporaryFile(suffix=".yaml", delete=True) as yamlf:
             with open(yamlf.name,"w") as of:
                 of.write(test_yaml)

@@ -21,6 +21,5 @@ class ExecutionState:
 
     def __init__(self, node_outputs=None, node_wrappers=None, configuration_wrappers=None):
         self.node_outputs = node_outputs if node_outputs is not None else {}
-        self.node_wrappers = node_wrappers if node_wrappers is not None else {}
-        self.configuration_wrappers = configuration_wrappers if configuration_wrappers is not None else {}
+
 

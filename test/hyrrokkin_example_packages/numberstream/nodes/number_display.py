@@ -28,10 +28,21 @@ class NumberDisplay:
         values = inputs["data_in"]
         s = json.dumps(values)
         self.services.set_status_info(s)
-        with self.services.open_file("results.txt","w") as f:
-            f.write(s)
-        self.services.set_property("results",values)
+        self.services.set_data("results",s)
         return {}
 
+    def open_client(self, client_id, send_fn):
+        def echo(*msg):
+            try:
+                msg = ["Echo"]+list(msg)
+                send_fn(*msg)
+            except Exception as ex:
+                print(ex)
+
+        return echo
+
     def reset_execution(self):
+        pass
+
+    def close(self):
         pass

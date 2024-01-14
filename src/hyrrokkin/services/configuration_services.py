@@ -17,6 +17,8 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import typing
+
 from hyrrokkin.services.status_states import StatusStates
 
 class ConfigurationServices:
@@ -72,11 +74,7 @@ class ConfigurationServices:
         :param default_value: a default value to return if the named property is not defined on the configuration
         :return: property value
         """
-        stored_value = self.wrapper.get_property(property_name)
-        if stored_value is None:
-            return default_value
-        else:
-            return stored_value
+        return self.wrapper.get_property(property_name, default_value)
 
     def set_property(self, property_name:str, property_value):
         """
@@ -89,20 +87,21 @@ class ConfigurationServices:
         """
         self.wrapper.set_property(property_name, property_value)
 
-    def open_file(self, path:str, mode, is_temporary, **kwargs):
+    def get_data(self, key: str) -> typing.Union[bytes, str]:
         """
-        Open a file a within this configuration's filestore.
+        Get binary or string data associated with this package configuration.
 
-        Data written to these files will be persisted when the topology to which this configuration belongs is saved and reloaded.
+        :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
 
-        :param path: the relative path to the file within the filestore
-        :param mode: the mode with which the file is to be opened
-        :param is_temporary: whether the file should be persisted when the node is saved
-        :param kwargs: other arguments to the open call
-
-        :return: opened file
-        :raises: exception if file cannot be opened
-
-        :notes: This method calls Python's builtin open function.  For a description of the available arguments to the open function, see https://docs.python.org/3/library/functions.html#open
+        :return: data or None if no data is associated with the key
         """
-        return self.wrapper.open_file(path, mode, is_temporary, **kwargs)
+        return self.wrapper.get_data(key)
+
+    def set_data(self, key: str, data: typing.Union[bytes, str]):
+        """
+        Set binary or string data associated with this package configuration.
+
+        :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
+        :param data: data to be stored
+        """
+        self.wrapper.set_data(key, data)

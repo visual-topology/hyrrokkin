@@ -17,25 +17,36 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import copy
 import logging
 import asyncio
 
-class NodeWrapper:
+from hyrrokkin.utils.data_store_utils import DataStoreUtils
+from .wrapper import Wrapper
+
+class NodeWrapper(Wrapper):
 
     def __init__(self, executor, network, node_id, services):
-        self.executor = executor
-        self.network = network
+        super().__init__(executor, network)
+
         self.node_id = node_id
-        self.instance = None
+
         self.services = services
+
+        self.dsu = DataStoreUtils(self.network.get_directory())
+        self.properties = self.dsu.get_node_properties(self.node_id)
 
         self.configuration = None
         self.logger = logging.getLogger(f"NodeWrapper[{node_id}]")
         self.services.wrapper = self
 
-    def set_instance(self, instance):
-        self.instance = instance
+    def get_id(self):
+        return self.node_id
+
+    def get_type(self):
+        return "node"
+
+    def __repr__(self):
+        return f"NodeWrapper({self.node_id})"
 
     def reset_execution(self):
         try:
@@ -46,29 +57,36 @@ class NodeWrapper:
 
     async def execute(self, inputs):
         if hasattr(self.instance, "execute"):
-            if asyncio.iscoroutinefunction(self.instance.execute):
-                return await self.instance.execute(inputs)
-            else:
-                try:
-                    return self.instance.execute(inputs)
-                except Exception as ex:
-                    print(ex)
-                    return {}
+            return await self.instance.execute(inputs)
         else:
             return {}
 
     def set_status(self, state, status_message):
         self.executor.notify(lambda executor: executor.status_update(self.node_id, "node", status_message, state))
 
+    def request_execution(self):
+        self.executor.request_node_execution(self.node_id)
+
+    def get_property(self, property_name, default_value):
+        return self.properties.get(property_name, default_value)
+
     def set_property(self, property_name, property_value):
-        property_value = copy.deepcopy(property_value)
-        self.network.set_node_property(self.node_id, property_name, property_value)
+        if property_value is not None:
+            self.properties[property_name] = property_value
+        else:
+            if property_name in self.properties:
+                del self.properties[property_name]
 
-    def get_property(self, property_name):
-        return self.network.get_node_property(self.node_id, property_name)
+        self.dsu.set_node_property(self.node_id, property_name, property_value)
 
-    def open_file(self, path, mode, is_temporary, **kwargs):
-        return self.network.open_file(self.node_id, "node", path, mode, is_temporary, **kwargs)
+    def reload_properties(self):
+        self.properties = self.dsu.get_node_properties(self.node_id)
+
+    def get_data(self, key):
+        return self.dsu.get_node_data(self.node_id, key)
+
+    def set_data(self, key, data):
+        self.dsu.set_node_data(self.node_id, key, data)
 
     def set_configuration(self, configuration):
         self.configuration = configuration
@@ -76,9 +94,10 @@ class NodeWrapper:
     def get_configuration(self):
         return self.configuration
 
-    def recv_message(self, message):
-        # to be overriden in sub-class
-        pass
+
+
+
+
 
 
 

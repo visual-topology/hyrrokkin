@@ -29,7 +29,7 @@ from utils.process_utils import run
 
 logging.basicConfig(level=logging.INFO)
 
-numberstream_schema_path = "hyrrokkin_example_packages.numberstream"
+numberstream_package = "hyrrokkin_example_packages.numberstream"
 
 
 class CodeExportTests(unittest.TestCase):
@@ -49,8 +49,8 @@ class CodeExportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             os.makedirs(d, exist_ok=True)
             with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as save_path:
-                t = Topology(tempfile.mkdtemp(),[numberstream_schema_path])
-                t.set_configuration("numberstream", {"offset": 0})
+                t = Topology(tempfile.mkdtemp(),[numberstream_package])
+                t.set_package_property("numberstream", "offset", 0)
                 t.add_node("n0", "numberstream:number_producer", {"value": 99})
                 t.add_node("n1", "numberstream:number_aggregator", {})
                 t.add_node("n2", "numberstream:number_display", {})
@@ -63,7 +63,7 @@ class CodeExportTests(unittest.TestCase):
                 ce.export()
 
                 output = run(d, "export.py")
-                display_path = os.path.join(d, "files", "node", "n2", "results.txt")
+                display_path = os.path.join(d, "node","n2", "data", "results.text")
                 with open(display_path) as f:
                     self.assertEqual("[99]",f.read())
 

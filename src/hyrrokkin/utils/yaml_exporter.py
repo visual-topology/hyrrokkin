@@ -21,20 +21,29 @@ from yaml import dump
 
 
 def export_to_yaml(from_topology,to_file):
+    node_ids = from_topology.get_node_ids()
+
+    configuration = {}
+
+    for node_id in node_ids:
+        package_id, _ = from_topology.get_node_type(node_id)
+        if package_id not in configuration:
+            configuration[package_id] = from_topology.get_package_properties(package_id)
 
     exported = {
         "metadata":from_topology.get_metadata(),
-        "configuration":from_topology.get_package_properties(),
+        "configuration":configuration,
         "nodes":{},
         "links":[]
     }
 
-    node_ids = from_topology.get_node_ids()
     node_types = {}
     for node_id in node_ids:
-        node_type,properties = from_topology.get_node(node_id)
-        node_types[node_id] = node_type
-        exported["nodes"][node_id] = {"type":node_type,"properties":properties}
+        package_id, node_type = from_topology.get_node_type(node_id)
+        properties = from_topology.get_node_properties(node_id)
+        fq_node_type = package_id + ":" + node_type
+        node_types[node_id] = fq_node_type
+        exported["nodes"][node_id] = {"type":fq_node_type, "properties":properties}
 
     link_ids = from_topology.get_link_ids()
     for link_id in link_ids:

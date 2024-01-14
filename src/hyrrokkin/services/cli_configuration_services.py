@@ -20,6 +20,7 @@
 import logging
 import os.path
 
+from hyrrokkin.utils.data_store_utils import DataStoreUtils
 
 class ConfigurationServices:
 
@@ -43,13 +44,17 @@ class ConfigurationServices:
         pass
 
     def get_property(self, property_name, default_value=None):
-        return self.properties.get(property_name, default_value)
+        dsu = DataStoreUtils(self.working_dir)
+        return dsu.get_package_property(self.package_id, property_name)
 
     def set_property(self, property_name, property_value):
-        self.properties[property_name] = property_value
+        dsu = DataStoreUtils(self.working_dir)
+        dsu.set_package_property(self.package_id, property_name, property_value)
 
-    def open_file(self, path, mode="r", is_temporary=False, **kwargs):
-        path = os.path.join(self.temp_dir if is_temporary else self.working_dir, "files", "configuration", self.package_id, path)
-        folder = os.path.split(path)[0]
-        os.makedirs(folder, exist_ok=True)
-        return open(path, mode=mode, **kwargs)
+    def get_data(self, key):
+        dsu = DataStoreUtils(self.working_dir)
+        return dsu.get_package_data(self.package_id, key)
+
+    def set_data(self, key, data):
+        dsu = DataStoreUtils(self.working_dir)
+        dsu.set_package_data(self.package_id, key, data)

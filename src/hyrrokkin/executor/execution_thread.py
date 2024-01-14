@@ -34,6 +34,8 @@ class ExecutionThread(threading.Thread):
         self.graph_executor = graph_executor
         self.executor_queue = executor_queue
         self.state = state if state is not None else ExecutionState()
+        self.node_wrappers = {}
+        self.configuration_wrappers = {}
         self.network = network
         self.execution_limit = execution_limit
         self.node_factory = node_factory
@@ -57,15 +59,18 @@ class ExecutionThread(threading.Thread):
         self.paused = True
         self.terminate_on_complete = False
         self.cache_outputs_for_nodes = []
-        self.required_outputs = {}
+
         self.completion_callback = None
         self.stopping = False
-        self.stop_callback = None
-        self.pending_notified = set()
 
         self.is_executing = {}
         self.execution_states = {}
         self.statuses = {}
+
+        self.pending_node_clients = {}
+        self.pending_configuration_clients = {}
+        self.pending_node_messages = {}
+        self.pending_configuration_messages = {}
 
         self.logger = logging.getLogger("ExecutionThread")
 
@@ -129,9 +134,6 @@ class ExecutionThread(threading.Thread):
     async def stop_executor_coro(self):
         self.stop_executor()
 
-    def valid_node(self, node_id):
-        return node_id in self.node_wrappers
-
     async def node_added(self, node):
         try:
             node_id = node.get_node_id()
@@ -143,8 +145,8 @@ class ExecutionThread(threading.Thread):
 
     async def node_removed(self, node_id):
         try:
-            if node_id in self.state.node_wrappers:
-                del self.state.node_wrappers[node_id]
+            if node_id in self.node_wrappers:
+                del self.node_wrappers[node_id]
             if node_id in self.state.node_outputs:
                 del self.state.node_outputs[node_id]
             if node_id in self.dirty_nodes:
@@ -209,39 +211,126 @@ class ExecutionThread(threading.Thread):
     async def clear(self):
         pass
 
+    async def open_client(self, target_id, client_id):
+        (target_type, _) = target_id
+        if target_type == "node":
+            node_id = target_id[1]
+            wrapper = self.node_wrappers.get(node_id,None)
+            pending = self.pending_node_clients
+        elif target_type == "configuration":
+            package_id = target_id[1]
+            wrapper = self.configuration_wrappers.get(package_id, None)
+            pending = self.pending_configuration_clients
+        else:
+            self.logger.error(f"invalid target_id: {target_id}")
+            return
+        if wrapper:
+            wrapper.open_client(client_id)
+        else:
+            node_or_package_id = target_id[1]
+            if node_or_package_id not in pending:
+                pending[node_or_package_id] = []
+            pending[node_or_package_id].append(client_id)
+
+    async def recv_message(self, target_id, client_id, *msg):
+        (target_type, _) = target_id
+
+        if target_type == "node":
+            node_id = target_id[1]
+            wrapper = self.node_wrappers.get(node_id,None)
+            pending = self.pending_node_messages
+        elif target_type == "configuration":
+            package_id = target_id[1]
+            wrapper = self.configuration_wrappers.get(package_id,None)
+            pending = self.pending_configuration_messages
+        else:
+            self.logger.error(f"invalid target_id: {target_id}")
+            return
+
+        if wrapper:
+            wrapper.recv_message(client_id, *msg)
+        else:
+            node_or_package_id = target_id[1]
+            if node_or_package_id not in pending:
+                pending[node_or_package_id] = []
+            pending[node_or_package_id].append((client_id,msg))
+
+    async def close_client(self, target_id, client_id):
+        (target_type, _) = target_id
+
+        if target_type == "node":
+            node_id = target_id[1]
+            wrapper = self.node_wrappers.get(node_id, None)
+            pending = self.pending_node_messages
+        elif target_type == "configuration":
+            package_id = target_id[1]
+            wrapper = self.configuration_wrappers.get(package_id, None)
+            pending = self.pending_configuration_messages
+        else:
+            self.logger.error(f"invalid target_id: {target_id}")
+            return
+
+        if wrapper:
+            wrapper.close_client(client_id)
+
+        node_or_package_id = target_id[1]
+        if node_or_package_id in pending:
+            if client_id in pending[node_or_package_id]:
+                pending[node_or_package_id].remove(client_id)
+
     def register_node(self, node_id):
         node = self.network.get_node(node_id)
         node_type_name = node.get_node_type()
         node_id = node.get_node_id()
         node_type = self.network.schema.get_node_type(node_type_name)
         (package_id, _) = Schema.split_descriptor(node_type_name)
-        if node_id not in self.state.node_wrappers:
-            (services, node_wrapper) = self.node_factory(self.graph_executor, self.network, node_id)
-            if package_id in self.state.configuration_wrappers:
-                node_wrapper.set_configuration(self.state.configuration_wrappers[package_id])
-            classname = node_type.get_classname()
-            cls = ResourceLoader.get_class(classname)
-            try:
-                instance = cls(services)
-                node_wrapper.set_instance(instance)
-            except Exception as ex:
-                print(ex)
 
-            self.state.node_wrappers[node_id] = node_wrapper
+        (services, node_wrapper) = self.node_factory(self.graph_executor, self.network, node_id)
+        if package_id in self.configuration_wrappers:
+            node_wrapper.set_configuration(self.configuration_wrappers[package_id])
+        classname = node_type.get_classname()
+        cls = ResourceLoader.get_class(classname)
+        try:
+            instance = cls(services)
+            node_wrapper.set_instance(instance)
+        except Exception as ex:
+            print(ex)
+
+        self.node_wrappers[node_id] = node_wrapper
+
         self.is_executing[node_id] = 0
         self.execution_states[node_id] = ""
+
+        if node_id in self.pending_node_clients:
+            for client_id in self.pending_node_clients[node_id]:
+               node_wrapper.open_client(client_id)
+            del self.pending_node_clients[node_id]
+
+        if node_id in self.pending_node_messages:
+            for (client_id, msg) in self.pending_node_messages[node_id]:
+                node_wrapper.recv_message(client_id, *msg)
+            del self.pending_node_messages[node_id]
 
     def register_package(self, package_id, package):
         package_configuration = package.get_configuration()
         if "classname" in package_configuration:
             classname = package_configuration["classname"]
-            if package_id not in self.state.configuration_wrappers:
-                (services, configuration_wrapper) = self.configuration_factory(self.graph_executor, self.network, package_id)
-                services.set_wrapper(configuration_wrapper)
-                cls = ResourceLoader.get_class(classname)
-                instance = cls(services)
-                configuration_wrapper.set_instance(instance)
-                self.state.configuration_wrappers[package_id] = configuration_wrapper
+            (services, configuration_wrapper) = self.configuration_factory(self.graph_executor, self.network, package_id)
+            services.set_wrapper(configuration_wrapper)
+            cls = ResourceLoader.get_class(classname)
+            instance = cls(services)
+            configuration_wrapper.set_instance(instance)
+            self.configuration_wrappers[package_id] = configuration_wrapper
+
+            if package_id in self.pending_configuration_clients:
+                for client_id in self.pending_configuration_clients[package_id]:
+                    configuration_wrapper.open_client(client_id)
+                del self.pending_configuration_clients[package_id]
+
+            if package_id in self.pending_configuration_messages:
+                for (client_id, msg) in self.pending_configuration_messages[package_id]:
+                    configuration_wrapper.recv_message(client_id, *msg)
+                del self.pending_configuration_messages[package_id]
 
     def executing_node_count(self):
         return len(self.executing_nodes)
@@ -314,19 +403,20 @@ class ExecutionThread(threading.Thread):
     async def execute(self, node_id):
         inputs = self.pre_execute(node_id)
         try:
-            node_wrapper = self.state.node_wrappers[node_id]
+            node_wrapper = self.node_wrappers[node_id]
+            node_wrapper.reload_properties()
             self.set_node_execution_state(node_id, NodeExecutionStates.executing)
             results = await node_wrapper.execute(inputs)
             if results is None:
                 results = {}
-            self.set_node_execution_state(node_id, NodeExecutionStates.executed)
+            self.set_node_execution_state(node_id, NodeExecutionStates.executed, results)
             try:
                 self.post_execute(node_id, results, None)
             except Exception as ex2:
                 print(ex2)
         except Exception as ex:
             self.logger.exception(f"Error executing {node_id}")
-            self.set_node_execution_state(node_id, NodeExecutionStates.failed)
+            self.set_node_execution_state(node_id, NodeExecutionStates.failed, ex)
             self.post_execute(node_id, None, ex)
 
         self.dispatch()
@@ -374,11 +464,14 @@ class ExecutionThread(threading.Thread):
     def schedule_link_removed(self, link_id):
         asyncio.run_coroutine_threadsafe(self.link_removed(link_id), self.loop)
 
-    def schedule_recv_node_message(self, node_id, msg):
-        asyncio.run_coroutine_threadsafe(self.recv_node_message(node_id, msg), self.loop)
+    def schedule_open_client(self, node_id, client_id):
+        asyncio.run_coroutine_threadsafe(self.open_client(node_id, client_id), self.loop)
 
-    def schedule_recv_configuration_message(self, package_id, msg):
-        asyncio.run_coroutine_threadsafe(self.recv_configuration_message(package_id, msg), self.loop)
+    def schedule_recv_message(self, target_id, client_id, *msg):
+        asyncio.run_coroutine_threadsafe(self.recv_message(target_id, client_id, *msg), self.loop)
+
+    def schedule_close_client(self, node_id, client_id):
+        asyncio.run_coroutine_threadsafe(self.close_client(node_id, client_id), self.loop)
 
     def schedule_request_node_execution(self, node_id):
         asyncio.run_coroutine_threadsafe(self.request_execution_coro(node_id), self.loop)
@@ -397,16 +490,8 @@ class ExecutionThread(threading.Thread):
     def schedule_clear(self):
         asyncio.run_coroutine_threadsafe(self.clear(), self.loop)
 
-    async def recv_node_message(self, node_id, content):
-        wrapper = self.state.node_wrappers[node_id]
-        wrapper.recv_message(content)
-
-    async def recv_configuration_message(self, package_id, content):
-        wrapper = self.state.configuration_wrappers[package_id]
-        wrapper.recv_message(content)
-
     def reset_execution(self, node_id):
-        self.state.node_wrappers[node_id].reset_execution()
+        self.node_wrappers[node_id].reset_execution()
 
     async def request_execution_coro(self, node_id):
         self.request_execution(node_id)
@@ -418,25 +503,45 @@ class ExecutionThread(threading.Thread):
 
     def set_status(self, node_id, state, message):
         self.statuses[node_id] = [state, message]
-        self.executor_queue.put(lambda e: e.status_update(node_id, message, state))
+        self.executor_queue.put(lambda graph_executor: graph_executor.status_update(node_id, message, state))
 
-    def set_node_execution_state(self, node_id, execution_state):
-        self.executor_queue.put(lambda e: e.node_execution_update(node_id, execution_state))
+    def set_node_execution_state(self, node_id, execution_state, exn_or_result=None):
+        self.executor_queue.put(lambda graph_executor: graph_executor.node_execution_update(node_id, execution_state, exn_or_result))
 
-    def send_node_message(self, node_id, msg, for_session_id=None, except_session_id=None):
-        self.executor_queue.put(lambda e: e.message_update(node_id, msg, for_session_id, except_session_id))
-
-    def set_node_property(self, node_id, property_name, property_value):
-        self.network.set_node_property(node_id, property_name, property_value)
+    def send_node_message(self, node_id, client_id, *msg):
+        self.executor_queue.put(lambda graph_executor: graph_executor.message_update(node_id, client_id, *msg))
 
     def get_node_property(self, node_id, property_name):
-        return self.network.get_node_property(node_id, property_name)
+        if node_id in self.node_wrappers:
+            return self.node_wrappers[node_id].get_property(property_name)
+        else:
+            return None
 
-    def set_package_property(self, package_id, property_name, property_value):
-        self.network.set_package_property(package_id, property_name, property_value)
+    def set_node_property(self, node_id, property_name, property_value):
+        if node_id in self.node_wrappers:
+            self.node_wrappers[node_id].set_property(property_name, property_value)
 
     def get_package_property(self, package_id, property_name):
-        return self.network.get_package_property(package_id, property_name)
+        if package_id in self.configuration_wrappers:
+            return self.configuration_wrappers[package_id].get_property(property_name)
+        else:
+            return None
+
+    def set_package_property(self, package_id, property_name, property_value):
+        if package_id in self.configuration_wrappers:
+            self.configuration_wrappers[package_id].set_property(property_name, property_value)
+
+    def close(self):
+        for node_id in self.node_wrappers:
+            self.node_wrappers[node_id].close()
+
+        self.node_wrappers = {}
+
+        for package_id in self.configuration_wrappers:
+            self.configuration_wrappers[package_id].close()
+
+        self.configuration_wrappers = {}
+
 
 
 
