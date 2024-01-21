@@ -1,0 +1,199 @@
+{
+  "test_cases": {
+    "1+2": {
+      "operator": "+",
+      "args": [
+        {
+          "literal": 1
+        },
+        {
+          "literal": 2
+        }
+      ]
+    },
+    "1+foo(1,2,3)": {
+      "operator": "+",
+      "args": [
+        {
+          "literal": 1
+        },
+        {
+          "function": "foo",
+          "args": [
+            {
+              "literal": 1
+            },
+            {
+              "literal": 2
+            },
+            {
+              "literal": 3
+            }
+          ]
+        }
+      ]
+    },
+    "1+foo(1,2+b,3)": {
+      "operator": "+",
+      "args": [
+        {
+          "literal": 1
+        },
+        {
+          "function": "foo",
+          "args": [
+            {
+              "literal": 1
+            },
+            {
+              "operator": "+",
+              "args": [
+                {
+                  "literal": 2
+                },
+                {
+                  "name": "b"
+                }
+              ]
+            },
+            {
+              "literal": 3
+            }
+          ]
+        }
+      ]
+    },
+    "1+2+3+4": {
+      "operator": "+",
+      "args": [
+        {
+          "operator": "+",
+          "args": [
+            {
+              "operator": "+",
+              "args": [
+                {
+                  "literal": 1
+                },
+                {
+                  "literal": 2
+                }
+              ]
+            },
+            {
+              "literal": 3
+            }
+          ]
+        },
+        {
+          "literal": 4
+        }
+      ]
+    },
+     "1+2-3+4": {
+      "operator": "+",
+      "args": [
+        {
+          "operator": "-",
+          "args": [
+            {
+              "operator": "+",
+              "args": [
+                {
+                  "literal": 1
+                },
+                {
+                  "literal": 2
+                }
+              ]
+            },
+            {
+              "literal": 3
+            }
+          ]
+        },
+        {
+          "literal": 4
+        }
+      ]
+    },
+    "1+2*3+4": {
+      "operator": "+",
+      "args": [
+        {
+          "operator": "+",
+          "args": [
+            {
+              "literal": 1
+            },
+            {
+              "operator": "*",
+              "args": [
+                {
+                  "literal": 2
+                },
+                {
+                  "literal": 3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "literal": 4
+        }
+      ]
+    },
+    "foo(2)+bar(1)": {
+      "operator": "+",
+      "args": [
+        {
+          "function": "foo",
+          "args": [
+            {
+              "literal": 2
+            }
+          ]
+        },
+        {
+          "function": "bar",
+          "args": [
+            {
+              "literal": 1
+            }
+          ]
+        }
+      ]
+    },
+    "foo()": {
+      "function": "foo",
+      "args": []
+    },
+    "foo(bar())": {
+      "function": "foo",
+      "args": [{
+        "function": "bar",
+        "args": []
+      }]
+    },
+    "a and b": {
+      "operator": "and",
+      "args": [
+        {
+          "name": "a"
+        },
+        {
+          "name": "b"
+        }
+      ]
+    },
+    "not b": {
+      "operator": "not",
+      "args": [
+        {
+          "name": "b"
+        }
+      ]
+    }
+  }
+}

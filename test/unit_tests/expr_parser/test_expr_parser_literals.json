@@ -1,0 +1,49 @@
+{
+  "test_cases": {
+    "1.234": {
+        "literal": 1.234
+    },
+    "1234": {
+      "literal": 1234
+    },
+    "-1234": {
+      "literal": -1234
+    },
+    "--1234": {
+      "literal": 1234
+    },
+    "1e2": {
+        "literal": 1e2
+    },
+    "1.3e-2": {
+        "literal": 1.3e-2
+    },
+    "0.345": {
+        "literal": 0.345
+    },
+    ".345": {
+        "literal": 0.345
+    },
+    "\"foo\"": {
+        "literal": "foo"
+    },
+    "a1bc_DEF": {
+        "name": "a1bc_DEF"
+    },
+    "'hello'": {
+        "literal": "hello"
+    },
+    "'hello' ' world'": {
+        "literal": "hello world"
+    },
+    "'hel\"lo'": {
+        "literal": "hel\"lo"
+    },
+    "\"hel'lo\"": {
+        "literal": "hel'lo"
+    },
+    "null": {
+      "name": "null"
+    }
+  }
+}

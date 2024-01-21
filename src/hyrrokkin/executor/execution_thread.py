@@ -27,9 +27,15 @@ from hyrrokkin.executor.node_execution_states import NodeExecutionStates
 from hyrrokkin.schema.schema import Schema
 from hyrrokkin.utils.resource_loader import ResourceLoader
 
+from hyrrokkin.services.node_services import NodeServices
+from hyrrokkin.services.node_wrapper import NodeWrapper
+from hyrrokkin.services.configuration_services import ConfigurationServices
+from hyrrokkin.services.configuration_wrapper import ConfigurationWrapper
+
+
 class ExecutionThread(threading.Thread):
 
-    def __init__(self, graph_executor, executor_queue, network, node_factory, configuration_factory, state=None, execution_limit=4):
+    def __init__(self, graph_executor, executor_queue, network, state=None, execution_limit=4):
         super().__init__()
         self.graph_executor = graph_executor
         self.executor_queue = executor_queue
@@ -38,8 +44,6 @@ class ExecutionThread(threading.Thread):
         self.configuration_wrappers = {}
         self.network = network
         self.execution_limit = execution_limit
-        self.node_factory = node_factory
-        self.configuration_factory = configuration_factory
 
         # lookup incoming links by node-id and port
         self.in_links = {}  # in-node-id => in-port => [link]
@@ -211,7 +215,7 @@ class ExecutionThread(threading.Thread):
     async def clear(self):
         pass
 
-    async def open_client(self, target_id, client_id):
+    async def open_client(self, target_id, client_id, client_options):
         (target_type, _) = target_id
         if target_type == "node":
             node_id = target_id[1]
@@ -225,12 +229,12 @@ class ExecutionThread(threading.Thread):
             self.logger.error(f"invalid target_id: {target_id}")
             return
         if wrapper:
-            wrapper.open_client(client_id)
+            wrapper.open_client(client_id, client_options)
         else:
             node_or_package_id = target_id[1]
             if node_or_package_id not in pending:
                 pending[node_or_package_id] = []
-            pending[node_or_package_id].append(client_id)
+            pending[node_or_package_id].append((client_id,client_options))
 
     async def recv_message(self, target_id, client_id, *msg):
         (target_type, _) = target_id
@@ -285,7 +289,8 @@ class ExecutionThread(threading.Thread):
         node_type = self.network.schema.get_node_type(node_type_name)
         (package_id, _) = Schema.split_descriptor(node_type_name)
 
-        (services, node_wrapper) = self.node_factory(self.graph_executor, self.network, node_id)
+        services = NodeServices(node_id)
+        node_wrapper = NodeWrapper(self.graph_executor, self.network, node_id, services)
         if package_id in self.configuration_wrappers:
             node_wrapper.set_configuration(self.configuration_wrappers[package_id])
         classname = node_type.get_classname()
@@ -302,8 +307,8 @@ class ExecutionThread(threading.Thread):
         self.execution_states[node_id] = ""
 
         if node_id in self.pending_node_clients:
-            for client_id in self.pending_node_clients[node_id]:
-               node_wrapper.open_client(client_id)
+            for (client_id,client_options) in self.pending_node_clients[node_id]:
+               node_wrapper.open_client(client_id, client_options)
             del self.pending_node_clients[node_id]
 
         if node_id in self.pending_node_messages:
@@ -315,7 +320,10 @@ class ExecutionThread(threading.Thread):
         package_configuration = package.get_configuration()
         if "classname" in package_configuration:
             classname = package_configuration["classname"]
-            (services, configuration_wrapper) = self.configuration_factory(self.graph_executor, self.network, package_id)
+
+            services = ConfigurationServices(package_id)
+            configuration_wrapper = ConfigurationWrapper(self.graph_executor, self.network, package_id, services)
+
             services.set_wrapper(configuration_wrapper)
             cls = ResourceLoader.get_class(classname)
             instance = cls(services)
@@ -323,8 +331,8 @@ class ExecutionThread(threading.Thread):
             self.configuration_wrappers[package_id] = configuration_wrapper
 
             if package_id in self.pending_configuration_clients:
-                for client_id in self.pending_configuration_clients[package_id]:
-                    configuration_wrapper.open_client(client_id)
+                for (client_id,client_options) in self.pending_configuration_clients[package_id]:
+                    configuration_wrapper.open_client(client_id,client_options)
                 del self.pending_configuration_clients[package_id]
 
             if package_id in self.pending_configuration_messages:
@@ -464,8 +472,8 @@ class ExecutionThread(threading.Thread):
     def schedule_link_removed(self, link_id):
         asyncio.run_coroutine_threadsafe(self.link_removed(link_id), self.loop)
 
-    def schedule_open_client(self, node_id, client_id):
-        asyncio.run_coroutine_threadsafe(self.open_client(node_id, client_id), self.loop)
+    def schedule_open_client(self, target_id, client_id, client_options):
+        asyncio.run_coroutine_threadsafe(self.open_client(target_id, client_id, client_options), self.loop)
 
     def schedule_recv_message(self, target_id, client_id, *msg):
         asyncio.run_coroutine_threadsafe(self.recv_message(target_id, client_id, *msg), self.loop)
@@ -503,10 +511,12 @@ class ExecutionThread(threading.Thread):
 
     def set_status(self, node_id, state, message):
         self.statuses[node_id] = [state, message]
-        self.executor_queue.put(lambda graph_executor: graph_executor.status_update(node_id, message, state))
+        if self.graph_executor.status_callback:
+            self.executor_queue.put(lambda graph_executor: graph_executor.status_update(node_id, message, state))
 
     def set_node_execution_state(self, node_id, execution_state, exn_or_result=None):
-        self.executor_queue.put(lambda graph_executor: graph_executor.node_execution_update(node_id, execution_state, exn_or_result))
+        if self.graph_executor.node_execution_callback:
+            self.executor_queue.put(lambda graph_executor: graph_executor.node_execution_update(node_id, execution_state, exn_or_result))
 
     def send_node_message(self, node_id, client_id, *msg):
         self.executor_queue.put(lambda graph_executor: graph_executor.message_update(node_id, client_id, *msg))

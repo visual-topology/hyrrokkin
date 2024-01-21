@@ -19,7 +19,7 @@
 
 class ExecutionState:
 
-    def __init__(self, node_outputs=None, node_wrappers=None, configuration_wrappers=None):
+    def __init__(self, node_outputs=None):
         self.node_outputs = node_outputs if node_outputs is not None else {}
 
 

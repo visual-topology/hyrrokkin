@@ -33,7 +33,7 @@ class Wrapper:
     def get_instance(self):
         return self.instance
 
-    def open_client(self, client_id):
+    def open_client(self, client_id, client_options):
 
         def message_forwarder(*message_parts):
             # send a message to a client
@@ -43,7 +43,7 @@ class Wrapper:
         self.client_services[client_id] = client_service
         try:
             if hasattr(self.instance, "open_client"):
-                rec_fn = self.instance.open_client(client_id, lambda *msg: client_service.send_message(*msg))
+                rec_fn = self.instance.open_client(client_id, client_options, lambda *msg: client_service.send_message(*msg))
                 if rec_fn:
                     def safe_rec(*msg):
                         try:

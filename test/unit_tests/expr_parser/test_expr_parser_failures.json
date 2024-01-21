@@ -1,0 +1,17 @@
+{
+  "test_cases": {
+      "1+": {
+      "error": "operator_unexpected",
+      "error_pos": 1
+      },
+    "(1,2)": {
+        "error": "operator_expected",
+        "error_pos": 3
+      },
+    "foo(1,2,,3)": {
+      "error": "comma_unexpected",
+      "error_pos": 8
+    },
+    "()": { "error": "expression_expected", "pos": 1 }
+   }
+}

@@ -31,7 +31,7 @@ class NumberDisplay:
         self.services.set_data("results",s)
         return {}
 
-    def open_client(self, client_id, send_fn):
+    def open_client(self, client_id, client_options, send_fn):
         def echo(*msg):
             try:
                 msg = ["Echo"]+list(msg)

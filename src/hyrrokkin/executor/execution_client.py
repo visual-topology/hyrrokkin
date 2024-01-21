@@ -19,11 +19,12 @@
 
 class ExecutionClient:
 
-    def __init__(self, target_id, client_id, message_callback):
+    def __init__(self, target_id, client_id, message_callback, client_options):
         self.execution_thread = None
         self.target_id = target_id # typically, ("node",node_id) or ("configuration",configuration_id)
         self.client_id = client_id
         self.message_callback = message_callback
+        self.client_options = client_options
         self.pending_messages = []
 
     def send_message(self, *msg):
@@ -40,3 +41,6 @@ class ExecutionClient:
 
     def disconnect(self):
         self.execution_thread = None
+
+    def get_client_options(self):
+        return self.client_options

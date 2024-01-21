@@ -18,7 +18,7 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import io
-from typing import Callable, Union, Literal, Any
+from typing import Callable, Union, Literal, Any, Dict
 
 from hyrrokkin.executor.graph_executor import GraphExecutor
 from hyrrokkin.schema.schema import Schema
@@ -30,15 +30,17 @@ from hyrrokkin.utils.data_store_utils import DataStoreUtils
 class Topology:
 
     def __init__(self, execution_folder, package_list:list[str],
-                 status_handler:Callable[[str,str,str,str],None]=lambda target_id, target_type, msg, status: None,
-                 execution_handler:Callable[[str,str,Union[Exception,None]],None]=lambda node_id, state, exception: None):
+                 status_handler:Callable[[str,str,str,str],None] = None,
+                 execution_handler:Callable[[str,str,Union[Dict,Exception,None]],None] = None):
         """
         Create a topology
 
         :param execution_folder: the folder used to store the topology definition and files
         :param package_list: a list of the paths to python packages containing schemas (a schema.json
         :param status_handler: specify a function to call when a node/configuration sets its status
+                parameters target_id, target_type, msg, status
         :param execution_handler: specify a function to call when a node changes its execution status
+                parameters lambda node_id, state, exception_or_result
         """
         self.execution_folder = execution_folder
         self.dsu = DataStoreUtils(self.execution_folder)
@@ -63,23 +65,25 @@ class Topology:
 
     def save(self, to_file):
         """
-       Save a topology to a binary stream
+        Save a topology to a binary stream
 
-       :param to_file: a binary stream, opened for writing
-       """
+        :param to_file: a binary stream, opened for writing
+        """
         self.executor.save(to_file)
 
-    def attach_node_client(self, node_id, client_id, message_callback):
+    def attach_node_client(self, node_id, client_id, message_callback, client_options={}):
         """
-        Attach a client instance to a node
+        Attach a client instance to a node.  Any client attached to the node with the same client_id
+        will be detached.
 
         :param node_id: the node to which the client is to be attached
-        :param client_id: an identifier for the client
+        :param client_id: a identifier for the client, unique in the context of the node
         :param message_callback: a function that is called when a message is sent from the node to this client
+        :param client_options: optional, a dictionary with extra parameters for the client
 
         :return: a function that can be used to send messages to the node
         """
-        return self.executor.attach_client(("node",node_id), client_id, message_callback)
+        return self.executor.attach_client(("node",node_id), client_id, message_callback, client_options)
 
     def detach_node_client(self, node_id, client_id):
         """
@@ -90,17 +94,18 @@ class Topology:
         """
         return self.executor.detach_client(("node",node_id), client_id)
 
-    def attach_configuration_client(self, package_id, client_id, message_callback):
+    def attach_configuration_client(self, package_id, client_id, message_callback, client_options={}):
         """
         Attach a client instance to a package configuration
 
         :param package_id: the package configuration to which the client is to be attached
-        :param client_id: an identifier for the client
+        :param client_id: an identifier for the client, unique in the context of the package configuration
         :param message_callback: a function that is called when a message is sent from the node to this client
+        :param client_options: optional, a dictionary with extra parameters for the client
 
         :return: a function that can be used to send messages to the node
         """
-        return self.executor.attach_client(("configuration",package_id), client_id, message_callback)
+        return self.executor.attach_client(("configuration",package_id), client_id, message_callback, client_options)
 
     def detach_configuration_client(self, package_id, client_id):
         """

@@ -20,42 +20,22 @@
 import queue
 
 from hyrrokkin.model.network import Network
-from hyrrokkin.services.node_services import NodeServices
-from hyrrokkin.services.node_wrapper import NodeWrapper
-from hyrrokkin.services.configuration_services import ConfigurationServices
-from hyrrokkin.services.configuration_wrapper import ConfigurationWrapper
 
-from hyrrokkin.utils.resource_loader import ResourceLoader
 from hyrrokkin.executor.execution_thread import ExecutionThread
 from hyrrokkin.executor.execution_state import ExecutionState
-
 from hyrrokkin.executor.execution_client import ExecutionClient
-
-
-def default_node_factory(executor, network, node_id):
-    services = NodeServices(node_id)
-    wrapper = NodeWrapper(executor, network, node_id, services)
-    return (services, wrapper)
-
-
-def default_configuration_factory(executor, network, package_id):
-    services = ConfigurationServices(package_id)
-    wrapper = ConfigurationWrapper(executor, network, package_id, services)
-    return (services, wrapper)
 
 
 class GraphExecutor:
 
     def __init__(self, schema, status_callback, node_execution_callback, execution_complete_callback,
-                 execution_folder=".", node_factory=default_node_factory, configuration_factory=default_configuration_factory):
+                 execution_folder="."):
         self.network = Network(schema, execution_folder)
         self.queue = queue.Queue()
         self.stop_on_execution_complete = False
         self.status_callback = status_callback
         self.node_execution_callback = node_execution_callback
         self.execution_complete_callback = execution_complete_callback
-        self.node_factory = node_factory
-        self.configuration_factory = configuration_factory
         self.et = None
         self.state = ExecutionState()
         self.paused = False
@@ -74,28 +54,29 @@ class GraphExecutor:
     def is_paused(self):
         return self.paused
 
-    def attach_client(self, id, client_id, message_callback):
-        client = ExecutionClient(id, client_id, message_callback)
-        self.execution_clients[(id, client_id)] = client
+    def attach_client(self, target_id, client_id, message_callback, client_options):
+        self.detach_client(target_id, client_id) # in case a client with the same id is already connected to the target
+        client = ExecutionClient(target_id, client_id, message_callback, client_options)
+        self.execution_clients[(target_id, client_id)] = client
         if self.et:
             client.connect_execution(self.et)
-            self.et.schedule_open_client(id, client_id)
+            self.et.schedule_open_client(target_id, client_id, client_options)
         return lambda *msg: client.send_message(*msg)
 
-    def detach_client(self, id, client_id):
-        if (id, client_id) in self.execution_clients:
-            client = self.execution_clients[(id, client_id)]
+    def detach_client(self, target_id, client_id):
+        if (target_id, client_id) in self.execution_clients:
+            client = self.execution_clients[(target_id, client_id)]
             client.disconnect()
-            self.et.schedule_close_client(id, client_id)
-            del self.execution_clients[(id, client_id)]
+            self.et.schedule_close_client(target_id, client_id)
+            del self.execution_clients[(target_id, client_id)]
 
     def run(self, terminate_on_complete=False, execute_to_nodes="*", cache_outputs_for_nodes="*"):
 
-        self.et = ExecutionThread(self, self.queue, self.network, self.node_factory, self.configuration_factory, self.state)
+        self.et = ExecutionThread(self, self.queue, self.network, self.state)
         for (id, client_id) in self.execution_clients:
             client = self.execution_clients[(id, client_id)]
             client.connect_execution(self.et)
-            self.et.schedule_open_client(id, client_id)
+            self.et.schedule_open_client(id, client_id, client.get_client_options())
 
         self.et.start()
 
@@ -119,15 +100,6 @@ class GraphExecutor:
         self.et.loop.close()
         self.et.close()
         self.et = None
-
-    def create_instance_for_configuration(self, package_id, classname):
-        if package_id not in self.state.configuration_wrappers:
-            (services, configuration_wrapper) = self.configuration_factory(self, self.network, package_id)
-            services.set_wrapper(configuration_wrapper)
-            cls = ResourceLoader.get_class(classname)
-            instance = cls(services)
-            configuration_wrapper.set_instance(instance)
-            self.state.configuration_wrappers[package_id] = configuration_wrapper
 
     def stop(self):
         if self.et:
@@ -155,11 +127,11 @@ class GraphExecutor:
     def get_link_ids(self):
         return self.network.get_link_ids()
 
-    def recv_node_message(self, node_id, from_session_id, msg):
-        self.et.schedule_recv_node_message(node_id, from_session_id, msg)
+    def recv_node_message(self, node_id, client_id, msg):
+        self.et.schedule_recv_message(("node", node_id), client_id, msg)
 
-    def recv_configuration_message(self, package_id, from_session_id, msg):
-        self.et.schedule_recv_configuration_message(package_id, from_session_id, msg)
+    def recv_configuration_message(self, package_id, client_id, msg):
+        self.et.schedule_recv_message(("configuration", package_id), client_id, msg)
 
     def remove_node(self, node_id):
         self.network.remove_node(node_id)
