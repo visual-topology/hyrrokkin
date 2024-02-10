@@ -55,6 +55,6 @@ class YamlImportTests(unittest.TestCase):
             with open(yamlf.name) as f:
                 import_from_yaml(t,f)
 
-        t.run(cache_outputs_for_nodes="*")
+        self.assertTrue(t.run())
 
         self.assertEqual({"data_out":200},t.get_node_outputs("n0"))

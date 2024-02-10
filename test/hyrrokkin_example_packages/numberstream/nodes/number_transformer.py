@@ -31,6 +31,5 @@ class NumberTransformer:
             fn = self.services.get_property("fn", "lambda x:x")
             return {"data_out": eval(fn)(value)}
 
-
     def reset_execution(self):
         pass

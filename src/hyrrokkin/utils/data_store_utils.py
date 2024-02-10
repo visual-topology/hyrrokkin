@@ -34,15 +34,12 @@ class DataStoreUtils:
     def __get_data(self, owner_id, file_type, key):
         DataStoreUtils.__check_valid_data_key(key)
         filepath = os.path.join(self.root_folder, file_type, owner_id, "data", key)
-        binary_filepath = filepath+".binary"
-        if os.path.exists(binary_filepath):
-            with open(binary_filepath, mode="rb") as f:
+
+        if os.path.exists(filepath):
+            with open(filepath, mode="rb") as f:
                 return f.read()
-        text_filepath = filepath+".text"
-        if os.path.exists(text_filepath):
-            with open(text_filepath, mode="r") as f:
-                return f.read()
-        return None
+        else:
+            return None
 
     def __set_data(self, owner_id, file_type, key, data):
         DataStoreUtils.__check_valid_data_key(key)
@@ -50,29 +47,19 @@ class DataStoreUtils:
         folder = os.path.join(self.root_folder, file_type, owner_id, "data")
 
         filepath = os.path.join(folder, key)
-        binary_filepath = filepath + ".binary"
-        text_filepath = filepath+".text"
 
         if data is None:
-            if os.path.exists(text_filepath):
-                os.remove(text_filepath)
-            if os.path.exists(binary_filepath):
-                os.remove(binary_filepath)
+            if os.path.exists(filepath):
+                os.remove(filepath)
             return
 
         os.makedirs(folder, exist_ok=True)
 
         if isinstance(data, bytes):
-            with open(binary_filepath, "wb") as f:
+            with open(filepath, "wb") as f:
                 f.write(data)
-            if os.path.exists(text_filepath):
-                os.remove(text_filepath)
-
-        elif isinstance(data, str):
-            with open(text_filepath, "w") as f:
-                f.write(data)
-            if os.path.exists(binary_filepath):
-                os.remove(binary_filepath)
+        else:
+            raise ValueError("data passed to set_data must be bytes")
 
     def __save_properties(self, owner_id, file_type, properties):
         folder = os.path.join(self.root_folder, file_type, owner_id)

@@ -17,54 +17,76 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import os.path
 import logging
-from hyrrokkin.schema.schema import Schema
-from hyrrokkin.executor.graph_executor import GraphExecutor
+import sys
 
-
-class TopologyRunner:
-
-    def __init__(self, schema):
-        self.executor = GraphExecutor(schema, lambda msg: print(msg))
-        self.executor.pause()
-
-    def load(self, topology_file):
-        self.executor.load(topology_file)
-
-    def run(self):
-        self.executor.resume()
-
-    def save(self, topology_file):
-        self.executor.save(topology_file)
-
+from hyrrokkin.api.topology import Topology
 
 def main():
     import argparse
 
     parser = argparse.ArgumentParser()
+
     parser.add_argument("--package", nargs="+", help="Specify package(s)", required=True)
-    parser.add_argument("--topology", help="Topology file to run", required=True)
-    parser.add_argument("--save-on-exit", help="Save updated topology back to file after running", action="store_true")
+    parser.add_argument("--execution-folder", help="Folder containing topology", required=True)
+    parser.add_argument("--import-path", help="topology file to import (.zip or .yaml)")
+    parser.add_argument("--export-path", help="topology file to export (.zip or .yaml)")
+    parser.add_argument("--run", action="store_true", help="run topology after loading")
 
     logging.basicConfig(level=logging.INFO)
 
     args = parser.parse_args()
 
-    schema = Schema()
+    logger = logging.getLogger("topology_runner")
 
-    for package_path in args.package:
-        schema.load_package_from_dict(package_path)
+    def status_handler(source_id,source_type, msg, status):
+        if status == "info":
+            logger.info(f"[{source_type}:{source_id}] {msg}")
+        elif status == "warning":
+            logger.warning(f"[{source_type}:{source_id}] {msg}")
+        else:
+            logger.error(f"[{source_type}:{source_id}] {msg}")
 
-    tr = TopologyRunner(schema)
+    def exception_handler(node_id, state, exception_or_result):
+        if state == "error":
+            logger.exception(f"[node:{node_id}] execution error", exc_info=exception_or_result)
 
-    with open(args.topology, "rb") as f:
-        tr.load(f)
+    t = Topology(args.execution_folder, args.package,
+                 status_handler=status_handler,
+                 execution_handler=exception_handler)
 
-    tr.run()
+    if args.import_path:
+        suffix = os.path.splitext(args.import_path)[1]
+        try:
+            if suffix == ".zip":
+                with open(args.import_path,"rb") as f:
+                    t.load(f)
+            else:
+                from hyrrokkin.utils.yaml_importer import import_from_yaml
+                with open(args.import_path) as f:
+                    import_from_yaml(t, f)
 
-    if args.save:
-        with open(args.topology, "wb") as f:
-            tr.save(f)
+        except Exception as ex:
+            logger.exception(f"Error importing topology from {args.import_path}")
+            sys.exit(0)
+
+    if args.run:
+        t.run()
+
+    if args.export_path:
+        suffix = os.path.splitext(args.export_path)[1]
+        try:
+            if suffix == ".zip":
+                with open(args.export_path,"wb") as f:
+                    t.save(f)
+            else:
+                from hyrrokkin.utils.yaml_exporter import export_to_yaml
+                with open(args.export_path,"w") as f:
+                    export_to_yaml(t, f)
+        except Exception as ex:
+            logger.exception(f"Error exporting topology to {args.export_path}")
+            sys.exit(0)
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import io
+import os
 from typing import Callable, Union, Literal, Any, Dict
 
 from hyrrokkin.executor.graph_executor import GraphExecutor
@@ -43,6 +44,7 @@ class Topology:
                 parameters lambda node_id, state, exception_or_result
         """
         self.execution_folder = execution_folder
+        os.makedirs(self.execution_folder,exist_ok=True)
         self.dsu = DataStoreUtils(self.execution_folder)
         self.schema = Schema()
         for package in package_list:
@@ -116,17 +118,13 @@ class Topology:
         """
         return self.executor.detach_client(("configuration",package_id), client_id)
 
-    def run(self, execute_to_nodes:Union[list[str],Literal["*"]]="*",
-            cache_outputs_for_nodes:Union[list[str],Literal["*"]]=[]):
+    def run(self):
         """
         Run the topology, blocking until the execution completes
 
-        :param execute_to_nodes: a list of node ids to run, or "*" to run all nodes.
-            These nodes and their predecessors may be executed, if their outputs were not ached from a previous run.
-        :param cache_outputs_for_nodes: a list of node ids to cache outputs for, or "*" to cache outputs for all nodes.
-            If a node's outputs are cached, they will be re-used in future runs and can be retrieved after a run completes.
+        :return: True if the excecution succeeded, false if it failed due to some error
         """
-        self.executor.run(terminate_on_complete=True, execute_to_nodes=execute_to_nodes, cache_outputs_for_nodes=cache_outputs_for_nodes)
+        return self.executor.run(terminate_on_complete=True)
 
     def get_node_outputs(self, node_id: str) -> Union[dict[str,Any],None]:
         """
@@ -155,7 +153,6 @@ class Topology:
         :notes: the following keys will be understood by tooling: name, version, description, author
         """
         self.executor.set_metadata(metadata)
-
 
     def add_node(self, node_id, node_type, properties) -> str:
         """

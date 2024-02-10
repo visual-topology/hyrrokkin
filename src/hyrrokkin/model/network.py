@@ -69,6 +69,20 @@ class Network:
         with self.lock:
             return self.nodes.get(node_id, None)
 
+    def get_connection_counts(self, node_id):
+        with self.lock:
+            new_counts = {"inputs": {}, "outputs": {}}
+            for link in self.links.values():
+                if link.from_node_id == node_id:
+                    if link.from_port not in new_counts["outputs"]:
+                        new_counts["outputs"][link.from_port] = 0
+                    new_counts["outputs"][link.from_port] = new_counts["outputs"][link.from_port] + 1
+                if link.to_node_id == node_id:
+                    if link.to_port not in new_counts["inputs"]:
+                        new_counts["inputs"][link.to_port] = 0
+                    new_counts["inputs"][link.to_port] = new_counts["inputs"][link.to_port] + 1
+            return new_counts
+
     def get_node_ids(self, traversal_order=None):
         with self.lock:
             if traversal_order is None:

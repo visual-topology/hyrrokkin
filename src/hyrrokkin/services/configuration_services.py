@@ -87,9 +87,9 @@ class ConfigurationServices:
         """
         self.wrapper.set_property(property_name, property_value)
 
-    def get_data(self, key: str) -> typing.Union[bytes, str]:
+    def get_data(self, key: str) -> typing.Union[bytes, None]:
         """
-        Get binary or string data associated with this package configuration.
+        Get binary data (bytes) associated with this package configuration.
 
         :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
 
@@ -97,11 +97,11 @@ class ConfigurationServices:
         """
         return self.wrapper.get_data(key)
 
-    def set_data(self, key: str, data: typing.Union[bytes, str]):
+    def set_data(self, key: str, data: typing.Union[bytes, None]):
         """
-        Set binary or string data associated with this package configuration.
+        Set binary data (bytes) associated with this package configuration.
 
         :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
-        :param data: data to be stored
+        :param data: binary data (bytes) to be stored (or None to remove previously stored data for this key)
         """
         self.wrapper.set_data(key, data)

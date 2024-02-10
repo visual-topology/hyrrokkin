@@ -32,9 +32,7 @@ class BasicTests(unittest.TestCase):
         super().__init__(*args,**kwargs)
 
     def test1(self):
-        t = Topology(tempfile.mkdtemp(),[numberstream_package],
-                     status_handler = lambda target_id, target_type, msg, status: print(target_id, target_type, msg, status),
-                     execution_handler=lambda node_id, state, exception_or_result: print(node_id,state,exception_or_result))
+        t = Topology(tempfile.mkdtemp(),[numberstream_package])
         t.add_node("n0","numberstream:number_producer",{"value":99})
         t.add_node("n1", "numberstream:number_transformer", {"fn":"lambda x: x*2"})
         t.add_node("n2","numberstream:number_aggregator", {})
@@ -48,7 +46,7 @@ class BasicTests(unittest.TestCase):
         sender("Hello","World")
         self.assertEqual(len(received_messages), 0)
 
-        t.run(cache_outputs_for_nodes="*")
+        self.assertTrue(t.run())
 
         self.assertEqual(len(received_messages),1)
         self.assertEqual(received_messages[0],("Echo","Hello","World"))
@@ -56,7 +54,7 @@ class BasicTests(unittest.TestCase):
         self.assertEqual({"data_out": 99},t.get_node_outputs("n0"))
         self.assertEqual({"data_out": 198}, t.get_node_outputs("n1"))
         self.assertEqual({"data_out": 198}, t.get_node_outputs("n2"))
-        self.assertEqual(json.dumps([198]),t.get_node_data("n3","results"))
+        self.assertEqual(json.dumps([198]),str(t.get_node_data("n3","results"),"utf-8"))
 
     def test2(self):
 
@@ -75,7 +73,7 @@ class BasicTests(unittest.TestCase):
             with open(saved.name, "rb") as f:
                 t2.load(f)
 
-            t2.run(cache_outputs_for_nodes="*")
+            self.assertTrue(t2.run())
 
             self.assertEqual({"data_out":99},t2.get_node_outputs("n0"))
 
@@ -85,13 +83,13 @@ class BasicTests(unittest.TestCase):
         t.add_node("n1","numberstream:number_aggregator", {})
         t.add_link("l0","n0","data_out","n1","data_in")
 
-        t.run(cache_outputs_for_nodes="*")
+        self.assertTrue(t.run())
         self.assertEqual({"data_out":99},t.get_node_outputs("n0"))
         self.assertEqual({"data_out": 99}, t.get_node_outputs("n1"))
 
         t.set_node_property("n0","value",100)
 
-        t.run(cache_outputs_for_nodes=["n0","n1"])
+        self.assertTrue(t.run())
         self.assertEqual({"data_out":100},t.get_node_outputs("n0"))
         self.assertEqual({"data_out": 100}, t.get_node_outputs("n1"))
 
@@ -103,7 +101,7 @@ class BasicTests(unittest.TestCase):
         t.add_link("l0","n0a","data_out", "n1","data_in")
         t.add_link("l1","n0b", "data_out", "n1", "data_in")
 
-        t.run(cache_outputs_for_nodes="*")
+        self.assertTrue(t.run())
 
         self.assertEqual({"data_out":99},t.get_node_outputs("n0a"))
         self.assertEqual({"data_out":100},t.get_node_outputs("n0b"))

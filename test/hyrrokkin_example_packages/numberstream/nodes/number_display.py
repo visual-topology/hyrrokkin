@@ -28,7 +28,7 @@ class NumberDisplay:
         values = inputs["data_in"]
         s = json.dumps(values)
         self.services.set_status_info(s)
-        self.services.set_data("results",s)
+        self.services.set_data("results",s.encode("utf-8"))
         return {}
 
     def open_client(self, client_id, client_options, send_fn):

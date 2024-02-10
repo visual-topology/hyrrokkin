@@ -70,7 +70,7 @@ class GraphExecutor:
             self.et.schedule_close_client(target_id, client_id)
             del self.execution_clients[(target_id, client_id)]
 
-    def run(self, terminate_on_complete=False, execute_to_nodes="*", cache_outputs_for_nodes="*"):
+    def run(self, terminate_on_complete=False):
 
         self.et = ExecutionThread(self, self.queue, self.network, self.state)
         for (id, client_id) in self.execution_clients:
@@ -82,7 +82,7 @@ class GraphExecutor:
 
         self.stop_on_execution_complete = terminate_on_complete
 
-        self.et.schedule_run(terminate_on_complete, execute_to_nodes=execute_to_nodes, cache_outputs_for_nodes=cache_outputs_for_nodes)
+        self.et.schedule_run(terminate_on_complete)
 
         while True:
             notify_fn = self.queue.get()
@@ -99,7 +99,9 @@ class GraphExecutor:
         self.et.join()
         self.et.loop.close()
         self.et.close()
+        result = not self.et.is_failed()
         self.et = None
+        return result
 
     def stop(self):
         if self.et:

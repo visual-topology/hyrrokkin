@@ -32,13 +32,21 @@ class NodeBase:
         pass
 
     @abstractmethod
-    def open_client(self, client_id, client_service):
+    def open_client(self, client_id, client_options, send_fn):
         pass
 
     @abstractmethod
-    def close_client(self, client_id, client_service):
+    def close_client(self, client_id):
+        pass
+
+    @abstractmethod
+    def connections_changed(self, new_connection_counts):
         pass
 
     @abstractmethod
     async def execute(self, inputs, requested_outputs):
+        pass
+
+    @abstractmethod
+    def close(self):
         pass

@@ -37,16 +37,14 @@ class FileStorageTests(unittest.TestCase):
             t = Topology(tempfile.mkdtemp(),[numberstream_package])
             t.add_node("n0", "numberstream:number_producer", {"value": 99})
 
-            test_string1 = "ABC 123"
+
             test_binary1 = b"34723974"
 
-            t.set_node_data("n0", "abc", test_string1)
+
             t.set_node_data("n0", "abc0", test_binary1)
 
-            t.set_node_data("n0", "abc1", test_string1)
             t.set_node_data("n0", "abc1", None)
 
-            self.assertEqual(test_string1, t.get_node_data("n0", "abc"))
             self.assertEqual(test_binary1, t.get_node_data("n0", "abc0"))
             self.assertIsNone(t.get_node_data("n0", "abc1"))
 
@@ -58,18 +56,18 @@ class FileStorageTests(unittest.TestCase):
             with open(saved.name, "rb") as f:
                 t2.load(f)
 
-            self.assertEqual(test_string1, t2.get_node_data("n0", "abc"))
+
             self.assertEqual(test_binary1, t2.get_node_data("n0", "abc0"))
             self.assertIsNone(t2.get_node_data("n0", "abc1"))
 
 
     def test2(self):
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as saved:
-            test_string1 = "ABC 123"
+
             test_binary1 = b"34723974"
 
             t = Topology(tempfile.mkdtemp(),[numberstream_package])
-            t.set_package_data("numberstream","abc",test_string1)
+
             t.set_package_data("numberstream","abc_0", test_binary1)
 
             with open(saved.name, "wb") as f:
@@ -80,7 +78,6 @@ class FileStorageTests(unittest.TestCase):
             with open(saved.name, "rb") as f:
                 t2.load(f)
 
-            self.assertEqual(test_string1,t2.get_package_data("numberstream","abc"))
             self.assertEqual(test_binary1, t2.get_package_data("numberstream", "abc_0"))
 
 

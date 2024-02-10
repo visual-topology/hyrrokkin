@@ -21,6 +21,7 @@ import asyncio
 import threading
 import logging
 from collections import defaultdict
+import traceback
 
 from hyrrokkin.executor.execution_state import ExecutionState
 from hyrrokkin.executor.node_execution_states import NodeExecutionStates
@@ -32,6 +33,15 @@ from hyrrokkin.services.node_wrapper import NodeWrapper
 from hyrrokkin.services.configuration_services import ConfigurationServices
 from hyrrokkin.services.configuration_wrapper import ConfigurationWrapper
 
+def async_exception_safe(func):
+    async def wrapper(*args, **kwargs):
+        execution_thread = args[0]
+        try:
+            await func(*args, **kwargs)
+        except Exception as ex:
+            traceback.print_exception(ex)
+            execution_thread.fail()
+    return wrapper
 
 class ExecutionThread(threading.Thread):
 
@@ -52,7 +62,6 @@ class ExecutionThread(threading.Thread):
         self.out_links = {}  # out-node-id => out-port => [link]
 
         self.loop = asyncio.new_event_loop()
-        self.loop.set_exception_handler(lambda loop, context: self.handle_loop_exception(context))
 
         self.dirty_nodes = {}  # node-id = > True
         self.executing_nodes = {}  # node-id = > True
@@ -62,7 +71,6 @@ class ExecutionThread(threading.Thread):
 
         self.paused = True
         self.terminate_on_complete = False
-        self.cache_outputs_for_nodes = []
 
         self.completion_callback = None
         self.stopping = False
@@ -78,13 +86,25 @@ class ExecutionThread(threading.Thread):
 
         self.logger = logging.getLogger("ExecutionThread")
 
+        self.failed = False
+
+    def fail(self):
+        self.failed = True
+        self.loop.stop()
+
+    def is_failed(self):
+        return self.failed
+
     def handle_loop_exception(self, context):
         self.logger.error("Loop Exception")
         self.logger.error(context)
 
     def run(self):
         asyncio.set_event_loop(self.loop)
+        # self.loop.set_exception_handler(lambda loop, context: self.handle_loop_exception(context))
+        self.loop.set_exception_handler(lambda loop, context: print("EXN"))
         self.loop.run_forever()
+        self.executor_queue.put(None)
 
     def pause(self):
         self.paused = True
@@ -93,19 +113,12 @@ class ExecutionThread(threading.Thread):
         self.paused = False
         self.dispatch()
 
-    async def run_coro(self, terminate_on_complete, execute_to_nodes, cache_outputs_for_nodes):
+    @async_exception_safe
+    async def run_coro(self, terminate_on_complete):
         self.terminate_on_complete = terminate_on_complete
-        self.cache_outputs_for_nodes = cache_outputs_for_nodes
         self.paused = False
 
-        if execute_to_nodes != "*":
-            all_node_ids = set()
-            for node_id in execute_to_nodes:
-                for pred_node_id in self.network.get_node_ids_to(node_id):
-                    all_node_ids.add(pred_node_id)
-            all_node_ids = list(all_node_ids)
-        else:
-            all_node_ids = self.network.get_node_ids(traversal_order=True)
+        all_node_ids = self.network.get_node_ids(traversal_order=True)
 
         for (package_id, package) in self.network.get_schema().get_packages().items():
             self.register_package(package_id, package)
@@ -113,12 +126,9 @@ class ExecutionThread(threading.Thread):
         for node_id in all_node_ids:
             self.register_node(node_id)
 
-            if node_id not in self.state.node_outputs:
-                self.dirty_nodes[node_id] = True
-                self.reset_execution(node_id)
-
         for link_id in self.network.get_link_ids():
             link = self.network.get_link(link_id)
+
             if link.to_node_id not in self.in_links:
                 self.in_links[link.to_node_id] = defaultdict(list)
             self.in_links[link.to_node_id][link.to_port].append(link)
@@ -126,64 +136,60 @@ class ExecutionThread(threading.Thread):
                 self.out_links[link.from_node_id] = defaultdict(list)
             self.out_links[link.from_node_id][link.from_port].append(link)
 
+        for node_id in all_node_ids:
+            if node_id not in self.state.node_outputs:
+                self.dirty_nodes[node_id] = True
+                self.reset_execution(node_id)
+
         self.dispatch()
 
     def stop_executor(self):
         if self.stopping:
             return
         self.stopping = True
-        self.executor_queue.put(None)
+
         self.loop.call_soon(self.loop.stop)
 
     async def stop_executor_coro(self):
         self.stop_executor()
 
+    @async_exception_safe
     async def node_added(self, node):
-        try:
-            node_id = node.get_node_id()
-            self.register_node(node_id)
-            self.mark_dirty(node_id)
-            self.dispatch()
-        except:
-            self.logger.exception("node_added")
+        node_id = node.get_node_id()
+        self.register_node(node_id)
+        self.mark_dirty(node_id)
+        self.dispatch()
 
+    @async_exception_safe
     async def node_removed(self, node_id):
-        try:
-            if node_id in self.node_wrappers:
-                del self.node_wrappers[node_id]
-            if node_id in self.state.node_outputs:
-                del self.state.node_outputs[node_id]
-            if node_id in self.dirty_nodes:
-                del self.dirty_nodes[node_id]
-            if node_id in self.in_links:
-                del self.in_links[node_id]
-            if node_id in self.out_links:
-                del self.out_links[node_id]
-        except:
-            self.logger.exception("node_removed")
+        if node_id in self.node_wrappers:
+            del self.node_wrappers[node_id]
+        if node_id in self.state.node_outputs:
+            del self.state.node_outputs[node_id]
+        if node_id in self.dirty_nodes:
+            del self.dirty_nodes[node_id]
+        if node_id in self.in_links:
+            del self.in_links[node_id]
+        if node_id in self.out_links:
+            del self.out_links[node_id]
 
     def get_outputs_from(self, output_node_id):
-        try:
-            input_node_ports = []
-            node_out_links = self.out_links.get(output_node_id, {})
-            for (output_port, link_list) in node_out_links.items():
-                for link in link_list:
-                    input_node_ports.append((link.to_node_id, link.to_port))
-            return input_node_ports
-        except:
-            self.logger.exception("get_outputs_from")
+        input_node_ports = []
+        node_out_links = self.out_links.get(output_node_id, {})
+        for (output_port, link_list) in node_out_links.items():
+            for link in link_list:
+                input_node_ports.append((link.to_node_id, link.to_port))
+        return input_node_ports
 
     def get_inputs_to(self, input_node_id):
-        try:
-            output_node_ports = []
-            node_in_links = self.in_links.get(input_node_id, {})
-            for (input_port, link_list) in node_in_links.items():
-                for link in link_list:
-                    output_node_ports.append((link.from_node_id, link.from_port))
-            return output_node_ports
-        except:
-            self.logger.exception("get_inputs_to")
+        output_node_ports = []
+        node_in_links = self.in_links.get(input_node_id, {})
+        for (input_port, link_list) in node_in_links.items():
+            for link in link_list:
+                output_node_ports.append((link.from_node_id, link.from_port))
+        return output_node_ports
 
+    @async_exception_safe
     async def link_added(self, link):
         if link.to_node_id not in self.in_links:
             self.in_links[link.to_node_id] = defaultdict(list)
@@ -192,29 +198,46 @@ class ExecutionThread(threading.Thread):
             self.out_links[link.from_node_id] = defaultdict(list)
         self.out_links[link.from_node_id][link.from_port].append(link)
 
-        try:
-            if link.from_port not in self.state.node_outputs.get(link.from_node_id,{}):
-                self.mark_dirty(link.from_node_id)
-            else:
-                self.mark_dirty(link.to_node_id)
-            self.dispatch()
-        except:
-            self.logger.exception("link_added")
+        self.notify_connection_counts(link.to_node_id)
+        self.notify_connection_counts(link.from_node_id)
 
-    async def link_removed(self, link_id):
-        try:
-            link = self.network.get_link(link_id)
-            self.in_links[link.to_node_id][link.to_port].remove(link)
-            self.out_links[link.from_node_id][link.from_port].remove(link)
-            self.network.remove_link(link_id)
+        if link.from_port not in self.state.node_outputs.get(link.from_node_id,{}):
+            self.mark_dirty(link.from_node_id)
+        else:
             self.mark_dirty(link.to_node_id)
-            self.dispatch()
+        self.dispatch()
+
+
+    @async_exception_safe
+    async def link_removed(self, link_id):
+        link = self.network.get_link(link_id)
+
+        self.in_links[link.to_node_id][link.to_port].remove(link)
+        self.out_links[link.from_node_id][link.from_port].remove(link)
+        self.network.remove_link(link_id)
+
+        self.notify_connection_counts(link.to_node_id)
+        self.notify_connection_counts(link.from_node_id)
+
+        self.mark_dirty(link.to_node_id)
+        self.dispatch()
+
+    def notify_connection_counts(self, node_id):
+        try:
+            if node_id in self.node_wrappers:
+                new_counts = self.network.get_connection_counts(node_id)
+                self.node_wrappers[node_id].connections_changed(new_counts)
         except:
-            self.logger.exception("link_removed")
+            self.logger.exception("notify_connection_counts")
 
     async def clear(self):
-        pass
+        self.network.clear()
 
+    @async_exception_safe
+    async def request_execution_coro(self, node_id):
+        self.request_execution(node_id)
+
+    @async_exception_safe
     async def open_client(self, target_id, client_id, client_options):
         (target_type, _) = target_id
         if target_type == "node":
@@ -236,6 +259,7 @@ class ExecutionThread(threading.Thread):
                 pending[node_or_package_id] = []
             pending[node_or_package_id].append((client_id,client_options))
 
+    @async_exception_safe
     async def recv_message(self, target_id, client_id, *msg):
         (target_type, _) = target_id
 
@@ -259,6 +283,7 @@ class ExecutionThread(threading.Thread):
                 pending[node_or_package_id] = []
             pending[node_or_package_id].append((client_id,msg))
 
+    @async_exception_safe
     async def close_client(self, target_id, client_id):
         (target_type, _) = target_id
 
@@ -302,6 +327,8 @@ class ExecutionThread(threading.Thread):
             print(ex)
 
         self.node_wrappers[node_id] = node_wrapper
+
+        self.notify_connection_counts(node_id)
 
         self.is_executing[node_id] = 0
         self.execution_states[node_id] = ""
@@ -408,6 +435,7 @@ class ExecutionThread(threading.Thread):
                     inputs[input_port_name].append(predecessor_outputs[output_port])
         return inputs
 
+    @async_exception_safe
     async def execute(self, node_id):
         inputs = self.pre_execute(node_id)
         try:
@@ -418,10 +446,7 @@ class ExecutionThread(threading.Thread):
             if results is None:
                 results = {}
             self.set_node_execution_state(node_id, NodeExecutionStates.executed, results)
-            try:
-                self.post_execute(node_id, results, None)
-            except Exception as ex2:
-                print(ex2)
+            self.post_execute(node_id, results, None)
         except Exception as ex:
             self.logger.exception(f"Error executing {node_id}")
             self.set_node_execution_state(node_id, NodeExecutionStates.failed, ex)
@@ -444,21 +469,6 @@ class ExecutionThread(threading.Thread):
             for port_name in result:
                 if port_name not in output_port_names:
                     self.logger.warning(f"Output at unexpected port {port_name} after execution of {node_id}")
-
-        # delete outputs from predecessor nodes if no longer needed
-        if self.cache_outputs_for_nodes != "*":
-            preds = self.get_inputs_to(node_id)
-            for (pred_node_id, _) in preds:
-                if pred_node_id in self.state.node_outputs and pred_node_id not in self.cache_outputs_for_nodes:
-                    # make sure all direct sucessors are not waiting to execute or executing
-                    pred_succs = self.get_outputs_from(pred_node_id)
-                    retain_outputs = False
-                    for (pred_succ_node_id, _) in pred_succs:
-                        if pred_succ_node_id in self.dirty_nodes or pred_succ_node_id in self.executing_nodes:
-                            # ok to delete outputs from predecessor
-                            retain_outputs = True
-                    if not retain_outputs:
-                        del self.state.node_outputs[pred_node_id]
 
     def schedule_node_added(self, node):
         asyncio.run_coroutine_threadsafe(self.node_added(node), self.loop)
@@ -484,8 +494,8 @@ class ExecutionThread(threading.Thread):
     def schedule_request_node_execution(self, node_id):
         asyncio.run_coroutine_threadsafe(self.request_execution_coro(node_id), self.loop)
 
-    def schedule_run(self, terminate_on_complete, execute_to_nodes=[], cache_outputs_for_nodes=[]):
-        asyncio.run_coroutine_threadsafe(self.run_coro(terminate_on_complete, execute_to_nodes, cache_outputs_for_nodes), self.loop)
+    def schedule_run(self, terminate_on_complete):
+        asyncio.run_coroutine_threadsafe(self.run_coro(terminate_on_complete), self.loop)
 
     def schedule_resume(self):
         asyncio.run_coroutine_threadsafe(
@@ -500,9 +510,6 @@ class ExecutionThread(threading.Thread):
 
     def reset_execution(self, node_id):
         self.node_wrappers[node_id].reset_execution()
-
-    async def request_execution_coro(self, node_id):
-        self.request_execution(node_id)
 
     # called in the loop from node
     def request_execution(self, node_id):

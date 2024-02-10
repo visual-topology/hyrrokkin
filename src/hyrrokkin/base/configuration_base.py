@@ -26,3 +26,15 @@ class ConfigurationBase:
     @abstractmethod
     def __init__(self, services):
         pass
+
+    @abstractmethod
+    def open_client(self, client_id, client_options, send_fn):
+        pass
+
+    @abstractmethod
+    def close_client(self, client_id):
+        pass
+
+    @abstractmethod
+    def close(self):
+        pass
