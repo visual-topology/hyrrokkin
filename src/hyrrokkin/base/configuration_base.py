@@ -38,3 +38,7 @@ class ConfigurationBase:
     @abstractmethod
     def close(self):
         pass
+
+    @abstractmethod
+    def properties_updated(self):
+        pass

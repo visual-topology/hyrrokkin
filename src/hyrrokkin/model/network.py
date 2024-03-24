@@ -19,6 +19,7 @@
 
 import logging
 import os.path
+import uuid
 from copy import deepcopy
 import zipfile
 import json
@@ -133,7 +134,7 @@ class Network:
 
     def get_link(self, link_id):
         with self.lock:
-            return self.links[link_id]
+            return self.links.get(link_id,None)
 
     def get_link_ids(self):
         with self.lock:
@@ -215,45 +216,79 @@ class Network:
                 node_ids.remove(link.from_node_id)
             return node_ids
 
-    def load(self, from_dict):
+    def load(self, from_dict, node_renamings):
         with self.lock:
             added_node_ids = []
             added_link_ids = []
 
             nodes = from_dict.get("nodes", {})
-            # TODO deal with id-conflicts by renaming the incoming nodes and links
+
             for (node_id, node_content) in nodes.items():
+                # check for collision with existing node ids, rename if necessary
+                if node_id in self.nodes:
+                    if node_id in node_renamings:
+                        node_id = node_renamings[node_id]
+                    else:
+                        node_renamings[node_id] = str(uuid.uuid4())
+                        node_id = node_renamings[node_id]
                 added_node_ids.append(node_id)
                 node = Node.load(node_id, node_content["node_type"], node_content)
                 self.add_node(node)
+
+            link_renamings = {}
             links = from_dict.get("links", {})
             for (link_id, link_content) in links.items():
+                # check for collision with existing links ids, rename if necessary
+                if link_id in self.links:
+                    link_renamings[link_id] = str(uuid.uuid4())
+                    link_id = link_renamings[link_id]
                 added_link_ids.append(link_id)
                 link = Link.load(link_id, link_content)
                 self.add_link(link)
-            self.set_metadata(from_dict.get("metadata", {"name": "", "description": ""}))
-            return (added_node_ids, added_link_ids)
+
+            metadata = self.get_metadata()
+            new_metadata = from_dict.get("metadata", {})
+            for key in new_metadata:
+                metadata[key] = new_metadata[key]
+            self.set_metadata(metadata)
+
+            return (added_node_ids, added_link_ids, node_renamings)
 
     def load_zip(self, f):
         with self.lock:
+            node_renamings = {}
             with zipfile.ZipFile(f) as zf:
                 zf.extract("topology.json", self.savedir)
 
-                storage_paths = [name for name in zf.namelist() if name.startswith("node") or name.startswith("package")]
+                zipinfos = zf.infolist()
+                for zipinfo in zipinfos:
+                    # if there is a collision on node id with an existing node
+                    # rename the new node and extract files to the new folder
+                    storage_comps = zipinfo.filename.split("/")
+                    if storage_comps[0] == "node":
+                        node_id = storage_comps[1]
+                        if node_id in self.nodes:
+                            if node_id not in node_renamings:
+                                # create a new node renaming
+                                node_renamings[node_id] = str(uuid.uuid4())
+                            storage_comps[1] = node_renamings[node_id]
+                            zipinfo.filename = "/".join(storage_comps)
 
-                for storage_path in storage_paths:
-                    zf.extract(storage_path,self.savedir)
-            return self.load_dir()
+                extract_zipinfos = [zipinfo for zipinfo in zipinfos if zipinfo.filename.startswith("node") or zipinfo.filename.startswith("package")]
 
-    def load_dir(self):
+                for zipinfo in extract_zipinfos:
+                    zf.extract(zipinfo,self.savedir)
+            return self.load_dir(node_renamings)
+
+    def load_dir(self, node_renamings):
         with self.lock:
             json_path = os.path.join(self.savedir, "topology.json")
             if os.path.exists(json_path):
                 with open(json_path) as f:
                     saved_topology = json.loads(f.read())
-                    (loaded_node_ids, loaded_link_ids) = self.load(saved_topology)
-                    return (loaded_node_ids, loaded_link_ids)
-            return ([],[])
+                    (loaded_node_ids, loaded_link_ids, node_renamings) = self.load(saved_topology,node_renamings)
+                    return (loaded_node_ids, loaded_link_ids, node_renamings)
+            return ([],[],node_renamings)
 
     def save(self):
         with self.lock:

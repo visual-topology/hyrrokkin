@@ -60,12 +60,12 @@ class Wrapper:
             self.client_services[client_id].handle_message(*message)
 
     def close_client(self, client_id):
-        if client_id in self.client_services[client_id]:
+        if client_id in self.client_services:
             client_service = self.client_services[client_id]
             client_service.close()
             try:
                 if hasattr(self.instance, "close_client"):
-                    self.instance.open_client(client_id)
+                    self.instance.close_client(client_id)
             except:
                 self.logger.exception(f"Error in close_client for {str(self)}")
             del self.client_services[client_id]

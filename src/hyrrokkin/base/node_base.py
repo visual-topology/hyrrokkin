@@ -28,7 +28,7 @@ class NodeBase:
         pass
 
     @abstractmethod
-    def reset_execution(self):
+    def reset_run(self):
         pass
 
     @abstractmethod
@@ -44,7 +44,7 @@ class NodeBase:
         pass
 
     @abstractmethod
-    async def execute(self, inputs, requested_outputs):
+    async def run(self, inputs, requested_outputs):
         pass
 
     @abstractmethod

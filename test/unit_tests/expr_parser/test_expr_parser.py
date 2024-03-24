@@ -26,7 +26,6 @@ class TestExprParser(unittest.TestCase):
         with open(os.path.join(folder,test_file_name)) as f:
             tests = json.loads(f.read())[key]
         for test_name in tests:
-            print(test_name)
             self.assertEqual(tests[test_name],self.ep.parse(test_name))
 
     def test_basic(self):

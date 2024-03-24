@@ -68,7 +68,15 @@ class NodeServices:
         """
         self.wrapper.set_status(StatusStates.clear.value, "")
 
-    def request_execution(self):
+    def note_still_running(self, is_still_running):
+        """
+        Indicate if execution is continuing after the execute method has completed
+
+        Each call to note_still_running(true) should be balanced with a later call to note_still_running(false)
+        """
+        pass
+
+    def request_run(self):
         """
         Request that this node be executed
         """

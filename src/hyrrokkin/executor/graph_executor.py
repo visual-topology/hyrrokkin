@@ -164,7 +164,7 @@ class GraphExecutor:
         return self.network.save()
 
     def load_dir(self):
-        (added_node_ids, added_link_ids) = self.network.load_dir()
+        (added_node_ids, added_link_ids, node_renamings) = self.network.load_dir({})
         for node_id in added_node_ids:
             node = self.network.get_node(node_id)
             if self.et:
@@ -173,9 +173,10 @@ class GraphExecutor:
             link = self.network.get_link(link_id)
             if self.et:
                 self.et.schedule_link_added(link)
+        return (added_node_ids, added_link_ids, node_renamings)
 
     def load_zip(self, f):
-        (added_node_ids, added_link_ids) = self.network.load_zip(f)
+        (added_node_ids, added_link_ids, node_renamings) = self.network.load_zip(f)
         for node_id in added_node_ids:
             node = self.network.get_node(node_id)
             if self.et:
@@ -184,6 +185,7 @@ class GraphExecutor:
             link = self.network.get_link(link_id)
             if self.et:
                 self.et.schedule_link_added(link)
+        return (added_node_ids, added_link_ids, node_renamings)
 
     def set_metadata(self, metadata):
         self.network.set_metadata(metadata)

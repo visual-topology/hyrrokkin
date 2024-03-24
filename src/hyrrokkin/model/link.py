@@ -35,9 +35,13 @@ class Link:
         return self.link_type
 
     @staticmethod
-    def load(link_id, from_dict):
+    def load(link_id, from_dict, node_renamings={}):
         (from_node_id, from_port) = from_dict["from_port"].split(":")
         (to_node_id, to_port) = from_dict["to_port"].split(":")
+
+        from_node_id = node_renamings.get(from_node_id,from_node_id)
+        to_node_id = node_renamings.get(to_node_id,to_node_id
+                                        )
         link_type = from_dict.get("link_type", "")
         return Link(link_id, from_node_id, from_port, to_node_id, to_port, link_type)
 

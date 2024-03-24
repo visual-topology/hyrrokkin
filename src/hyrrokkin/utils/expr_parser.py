@@ -331,7 +331,6 @@ class ExpressionParser:
                     rhs = args[idx+1:]
                     e = {"operator":subexpr["operator"],"pos":subexpr["pos"],
                             "args":[self.refine_binary(lhs),self.refine_binary(rhs)]}
-                    print(e)
                     return e
                 idx -= 2
 
@@ -392,8 +391,3 @@ class ExpressionParser:
             expr["args"] = [self.strip_debug(e) for e in expr["args"]]
         return expr
 
-ep = ExpressionParser()
-ep.add_binary_operator("*", 15)
-ep.add_binary_operator("+", 10)
-
-print(ep.parse("10 * 11 + foo(8+6,\"aaa\")"))

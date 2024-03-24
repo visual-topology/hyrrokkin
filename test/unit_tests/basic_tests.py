@@ -107,6 +107,31 @@ class BasicTests(unittest.TestCase):
         self.assertEqual({"data_out":100},t.get_node_outputs("n0b"))
         self.assertEqual({"data_out": 199}, t.get_node_outputs("n1"))
 
+    def test_merge(self):
+
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as saved:
+
+            # test the merging of two topologies
+            t = Topology(tempfile.mkdtemp(),[numberstream_package])
+            t.add_node("n0", "numberstream:number_producer", {"value": 99})
+            t.add_node("n1", "numberstream:number_aggregator", {})
+            t.add_link("l0", "n0", "data_out", "n1", "data_in")
+
+            with open(saved.name, "wb") as f:
+                t.save(f)
+
+            t2 = Topology(tempfile.mkdtemp(),[numberstream_package])
+
+            with open(saved.name, "rb") as f:
+                node_renamings1 = t2.load(f)
+                node_renamings2 = t2.load(f) # load a second copy of the topology
+
+            self.assertEqual(len(node_renamings1),0)
+            self.assertEqual(len(node_renamings2),2)
+            self.assertTrue(t2.run())
+
+            self.assertEqual({"data_out":99},t2.get_node_outputs("n0"))
+            self.assertEqual({"data_out":99},t2.get_node_outputs(node_renamings2["n0"]))
 
 if __name__ == '__main__':
     import logging

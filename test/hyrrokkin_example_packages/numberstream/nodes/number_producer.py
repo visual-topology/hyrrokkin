@@ -23,10 +23,10 @@ class NumberProducer:
     def __init__(self, services):
         self.services = services
 
-    def reset_execution(self):
+    def reset_run(self):
         pass
 
-    async def execute(self, inputs):
+    async def run(self, inputs):
         value = self.services.get_property("value", 10)
         return { "data_out": value }
 

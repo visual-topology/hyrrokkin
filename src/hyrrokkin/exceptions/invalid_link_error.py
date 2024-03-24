@@ -19,9 +19,8 @@
 
 class InvalidLinkError(Exception):
 
-    def __init__(self, link_id, msg):
+    def __init__(self, msg):
         super().__init__(msg)
-        self.link_id = link_id
 
 
 

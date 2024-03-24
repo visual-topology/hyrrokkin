@@ -23,7 +23,7 @@ class NumberTransformer:
     def __init__(self, services):
         self.services = services
 
-    async def execute(self, inputs):
+    async def run(self, inputs):
         if len(inputs["data_in"]) == 0:
             return {"data_out": None}
         else:
@@ -31,5 +31,5 @@ class NumberTransformer:
             fn = self.services.get_property("fn", "lambda x:x")
             return {"data_out": eval(fn)(value)}
 
-    def reset_execution(self):
+    def reset_run(self):
         pass

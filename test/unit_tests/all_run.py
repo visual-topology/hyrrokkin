@@ -24,5 +24,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     unittest.main("unit_tests.basic_tests",exit=False)
     unittest.main("unit_tests.file_storage_tests",exit=False)
-    unittest.main("unit_tests.test_yaml_import")
-    unittest.main("unit_tests.test_yaml_export")
+    unittest.main("unit_tests.test_yaml_import",exit=False)
+    unittest.main("unit_tests.test_yaml_export",exit=False)
+    unittest.main("unit_tests.expr_parser.test_expr_parser",exit=False)

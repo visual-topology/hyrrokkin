@@ -17,32 +17,7 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import json
+class InvalidNodeError(Exception):
 
-class NumberDisplay:
-
-    def __init__(self, services):
-        self.services = services
-
-    def run(self, inputs):
-        values = inputs["data_in"]
-        s = json.dumps(values)
-        self.services.set_status_info(s)
-        self.services.set_data("results",s.encode("utf-8"))
-        return {}
-
-    def open_client(self, client_id, client_options, send_fn):
-        def echo(*msg):
-            try:
-                msg = ["Echo"]+list(msg)
-                send_fn(*msg)
-            except Exception as ex:
-                print(ex)
-
-        return echo
-
-    def reset_run(self):
-        pass
-
-    def close(self):
-        pass
+    def __init__(self, msg):
+        super().__init__(msg)

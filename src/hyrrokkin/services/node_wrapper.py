@@ -18,7 +18,7 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import logging
-import asyncio
+import inspect
 
 from hyrrokkin.utils.data_store_utils import DataStoreUtils
 from .wrapper import Wrapper
@@ -57,14 +57,17 @@ class NodeWrapper(Wrapper):
 
     def reset_execution(self):
         try:
-            if hasattr(self.instance, "reset_execution"):
-                self.instance.reset_execution()
+            if hasattr(self.instance, "reset_run"):
+                self.instance.reset_run()
         except:
             self.logger.exception(f"Error in reset_execution for node {self.node_id}")
 
     async def execute(self, inputs):
-        if hasattr(self.instance, "execute"):
-            return await self.instance.execute(inputs)
+        if hasattr(self.instance, "run"):
+            if inspect.iscoroutinefunction(self.instance.run):
+                return await self.instance.run(inputs)
+            else:
+                return self.instance.run(inputs)
         else:
             return {}
 
