@@ -59,8 +59,8 @@ class NodeType:
                 cls = ResourceLoader.get_class(classname)
 
             # check class has expected attributes
-            if not hasattr(cls, "execute"):
-                raise Exception(f"Node class {classname} does not have the required execute method")
+            if not hasattr(cls, "run"):
+                raise Exception(f"Node class {classname} does not have the required run method")
 
         return NodeType(metadata=from_dict.get("metadata", {}),
                         display=from_dict.get("display", {}),

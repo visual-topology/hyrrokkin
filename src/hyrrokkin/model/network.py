@@ -177,21 +177,23 @@ class Network:
 
     def get_input_ports(self, node_id):
         with self.lock:
-            node = self.nodes[node_id]
-            node_type = self.schema.get_node_type(node.get_node_type())
-            input_ports = []
-            for (input_port_name, _) in node_type.get_input_ports():
-                input_ports.append(input_port_name)
-            return input_ports
+            node = self.nodes.get(node_id,None)
+            if node:
+                node_type = self.schema.get_node_type(node.get_node_type())
+                input_ports = []
+                for (input_port_name, _) in node_type.get_input_ports():
+                    input_ports.append(input_port_name)
+                return input_ports
 
     def get_output_ports(self, node_id):
         with self.lock:
-            node = self.nodes[node_id]
-            node_type = self.schema.get_node_type(node.get_node_type())
-            output_ports = []
-            for (output_port_name, _) in node_type.get_output_ports():
-                output_ports.append(output_port_name)
-            return output_ports
+            node = self.nodes.get(node_id,None)
+            if node:
+                node_type = self.schema.get_node_type(node.get_node_type())
+                output_ports = []
+                for (output_port_name, _) in node_type.get_output_ports():
+                    output_ports.append(output_port_name)
+                return output_ports
 
     def get_inputs_to(self, node_id, input_port_name=None):
         with self.lock:
