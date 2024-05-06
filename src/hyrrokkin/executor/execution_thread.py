@@ -226,7 +226,7 @@ class ExecutionThread(threading.Thread):
         try:
             if node_id in self.node_wrappers:
                 new_counts = self.network.get_connection_counts(node_id)
-                self.node_wrappers[node_id].connections_changed(new_counts)
+                self.node_wrappers[node_id].connections_changed(new_counts["inputs"],new_counts["outputs"])
         except:
             self.logger.exception("notify_connection_counts")
 

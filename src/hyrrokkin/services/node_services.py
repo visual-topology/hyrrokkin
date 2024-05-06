@@ -22,6 +22,8 @@ from hyrrokkin.base.configuration_base import ConfigurationBase
 from hyrrokkin.exceptions.node_execution_failed import NodeExecutionFailed
 from hyrrokkin.services.status_states import StatusStates
 
+from src.hyrrokkin.utils.type_hints import JsonType
+
 class NodeServices:
 
     """
@@ -29,12 +31,14 @@ class NodeServices:
     """
 
     def __init__(self, node_id: str):
+        
         self.node_id = node_id
         self.wrapper = None
 
     def get_node_id(self) -> str:
         """
-        :return: a string containing the node's unique ID
+        Returns:
+            a string containing the node's unique ID
         """
         return self.node_id
 
@@ -42,7 +46,8 @@ class NodeServices:
         """
         Set an info status message for the node.
 
-        :param status_message: a short descriptive message or empty string
+        Args:
+            status_message: a short descriptive message or empty string
         """
         self.wrapper.set_status(StatusStates.info.value, status_message)
 
@@ -50,7 +55,8 @@ class NodeServices:
         """
         Set a warning status message for the node.
 
-        :param status_message: a short descriptive message or empty string
+        Args:
+            status_message: a short descriptive message or empty string
         """
         self.wrapper.set_status(StatusStates.warning.value, status_message)
 
@@ -58,7 +64,8 @@ class NodeServices:
         """
         Set an error status message for the node.
 
-        :param status_message: a short descriptive message or empty string
+        Args:
+            status_message: a short descriptive message or empty string
         """
         self.wrapper.set_status(StatusStates.error.value, status_message)
 
@@ -82,24 +89,29 @@ class NodeServices:
         """
         self.wrapper.request_execution()
 
-    def get_property(self, property_name:str, default_value=None):
+    def get_property(self, property_name:str, default_value:JsonType=None) -> JsonType:
         """
         Get the current value for the node's property
 
-        :param property_name: the name of the property
-        :param default_value: a default value to return if the named property is not defined on the node
-        :return: property value
+        Args:
+            property_name: the name of the property
+            default_value: a default value to return if the named property is not defined on the node
+        
+        Returns:
+            the property value
         """
         return self.wrapper.get_property(property_name, default_value)
 
-    def set_property(self, property_name:str, property_value):
+    def set_property(self, property_name:str, property_value: JsonType):
         """
         Set the current value for the node's property
 
-        :param property_name: the name of the property
-        :param property_value: the property value
+        Args:
+            property_name: the name of the property
+            property_value: the JSON-serialisable property value
 
-        :notes: property values MUST be JSON-serialisable
+        Notes: 
+            property values MUST be JSON-serialisable
         """
         self.wrapper.set_property(property_name, property_value)
 
@@ -107,9 +119,11 @@ class NodeServices:
         """
         Get binary data (bytes) associated with this node.
 
-        :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
+        Args:
+            key: a key to locate the data (can only contain alphanumeric characters and underscores)
 
-        :return: data or None if no data is associated with the key
+        Returns:
+            data or None if no data is associated with the key
         """
         return self.wrapper.get_data(key)
 
@@ -117,8 +131,9 @@ class NodeServices:
         """
         Set binary data (bytes) associated with this node.
 
-        :param key: a key to locate the data (can only contain alphanumeric characters and underscores)
-        :param data: binary data (bytes) to be stored (or None to remove previously stored data for this key)
+        Args:
+            key: a key to locate the data (can only contain alphanumeric characters and underscores)
+            data: binary data (bytes) to be stored (or None to remove previously stored data for this key)
         """
         self.wrapper.set_data(key, data)
 
@@ -126,7 +141,8 @@ class NodeServices:
         """
         Obtain a configuration object if defined for the node's package.
 
-        :return: a configuration object or None
+        Returns:
+            a configuration object or None
         """
         return self.wrapper.get_configuration().get_instance()
 
@@ -134,7 +150,8 @@ class NodeServices:
         """
         Obtain a dictionary object describing the input and output port connections.
 
-        :return: dict
+        Returns:
+            dict
         """
         return self.wrapper.get_connections()
 

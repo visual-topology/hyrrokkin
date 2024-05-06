@@ -48,10 +48,10 @@ class NodeWrapper(Wrapper):
     def __repr__(self):
         return f"NodeWrapper({self.node_id})"
 
-    def connections_changed(self, connection_counts):
+    def connections_changed(self, input_connection_counts, output_connection_counts):
         try:
             if hasattr(self.instance, "connections_changed"):
-                self.instance.connections_changed(connection_counts)
+                self.instance.connections_changed(input_connection_counts, output_connection_counts)
         except:
             self.logger.exception(f"Error in connections_changed for {str(self)}")
 

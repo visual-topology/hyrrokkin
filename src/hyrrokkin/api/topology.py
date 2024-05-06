@@ -28,17 +28,13 @@ from hyrrokkin.model.link import Link
 from hyrrokkin.exceptions.invalid_link_error import InvalidLinkError
 from hyrrokkin.exceptions.invalid_node_error import InvalidNodeError
 from hyrrokkin.utils.data_store_utils import DataStoreUtils
-
-JsonType = Union[Dict[str, "JsonType"], List["JsonType"], str, int, float, bool, None]
-
-
-class ClientMessageProtocol(Protocol):
-    def __call__(self, *args: str): ...
+from hyrrokkin.utils.type_hints import JsonType
+from hyrrokkin.utils.type_hints import ClientMessageProtocol
 
 
 class Topology:
 
-    def __init__(self, execution_folder, package_list: list[str],
+    def __init__(self, execution_folder:str, package_list: list[str],
                  status_handler: Callable[[str, str, str, str], None] = None,
                  execution_handler: Callable[[str, str, Union[Dict, Exception, None]], None] = None):
         """
@@ -142,7 +138,7 @@ class Topology:
         """
         return self.executor.detach_client(("configuration", package_id), client_id)
 
-    def run(self):
+    def run(self) -> bool:
         """
         Run the topology, blocking until the execution completes
 
@@ -415,7 +411,7 @@ class Topology:
         """
         return self.executor.get_link_ids()
 
-    def get_link(self, link_id) -> tuple[str, str, str, str]:
+    def get_link(self, link_id:str) -> tuple[str, str, str, str]:
         """
         Get the link details for a given link
 
