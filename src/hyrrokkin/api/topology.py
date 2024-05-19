@@ -171,15 +171,15 @@ class Topology:
         """
         self.executor.stop()
 
-    def set_metadata(self, metadata: dict[str, Any]):
+    def set_metadata(self, metadata: dict[str, str]):
         """
         Set metadata for this topology
 
         Args:
-            metadata: a dictionary containing metadata, that must be JSON serialisable.
+            metadata: a dictionary containing metadata, consisting of string keys and values.
 
         Notes:
-            the following keys will be understood by hyrrokkin based tools - name, version, description, author
+            the following keys will be understood by hyrrokkin based tools - version, description, authors
         """
         self.executor.set_metadata(metadata)
 

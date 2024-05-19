@@ -322,6 +322,8 @@ class Network:
 
     def __save_dir(self):
         saved = self.save()
-        with open(os.path.join(self.savedir,"topology.json"),"w") as f:
+        path = os.path.join(self.savedir,"topology.json")
+        self.logger.info("saving: "+path)
+        with open(path,"w") as f:
             f.write(json.dumps(saved))
 
