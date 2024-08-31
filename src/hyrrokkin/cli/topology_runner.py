@@ -30,8 +30,8 @@ def main():
 
     parser.add_argument("--package", nargs="+", help="Specify package(s)", required=True)
     parser.add_argument("--execution-folder", help="Folder containing topology", required=True)
-    parser.add_argument("--import-path", help="topology file to import (.zip or .yaml)")
-    parser.add_argument("--export-path", help="topology file to export (.zip or .yaml)")
+    parser.add_argument("--import-path", help="topology file to import (.zip or .yaml/.yml)")
+    parser.add_argument("--export-path", help="topology file to export (.zip or .yaml/.yml)")
     parser.add_argument("--run", action="store_true", help="run topology after loading")
 
     logging.basicConfig(level=logging.INFO)
@@ -45,8 +45,11 @@ def main():
             logger.info(f"[{source_type}:{source_id}] {msg}")
         elif status == "warning":
             logger.warning(f"[{source_type}:{source_id}] {msg}")
-        else:
+        elif status == "error":
             logger.error(f"[{source_type}:{source_id}] {msg}")
+        elif status == "":
+            # clear status, log nothing
+            pass
 
     def exception_handler(node_id, state, exception_or_result):
         if state == "error":
@@ -62,10 +65,12 @@ def main():
             if suffix == ".zip":
                 with open(args.import_path,"rb") as f:
                     t.load(f)
-            else:
+            elif suffix == ".yaml" or suffix == ".yml":
                 from hyrrokkin.utils.yaml_importer import import_from_yaml
                 with open(args.import_path) as f:
                     import_from_yaml(t, f)
+            else:
+                raise Exception("Unsupported input file type, expecting .zip, .yaml or .yml")
 
         except Exception as ex:
             logger.exception(f"Error importing topology from {args.import_path}")
@@ -80,10 +85,12 @@ def main():
             if suffix == ".zip":
                 with open(args.export_path,"wb") as f:
                     t.save(f)
-            else:
+            elif suffix == ".yaml" or suffix == ".yml":
                 from hyrrokkin.utils.yaml_exporter import export_to_yaml
                 with open(args.export_path,"w") as f:
                     export_to_yaml(t, f)
+            else:
+                raise Exception("Unsupported export file type, expecting .zip, .yaml or .yml")
         except Exception as ex:
             logger.exception(f"Error exporting topology to {args.export_path}")
             sys.exit(0)

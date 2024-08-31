@@ -184,6 +184,8 @@ class Network:
                 for (input_port_name, _) in node_type.get_input_ports():
                     input_ports.append(input_port_name)
                 return input_ports
+            else:
+                return []
 
     def get_output_ports(self, node_id):
         with self.lock:
@@ -194,6 +196,8 @@ class Network:
                 for (output_port_name, _) in node_type.get_output_ports():
                     output_ports.append(output_port_name)
                 return output_ports
+            else:
+                return []
 
     def get_inputs_to(self, node_id, input_port_name=None):
         with self.lock:
@@ -227,14 +231,16 @@ class Network:
 
             for (node_id, node_content) in nodes.items():
                 # check for collision with existing node ids, rename if necessary
+                renamed = False
                 if node_id in self.nodes:
-                    if node_id in node_renamings:
-                        node_id = node_renamings[node_id]
-                    else:
-                        node_renamings[node_id] = str(uuid.uuid4())
-                        node_id = node_renamings[node_id]
+                    node_renamings[node_id] = "n"+str(uuid.uuid4())
+                    node_id = node_renamings[node_id]
+                    renamed = True
                 added_node_ids.append(node_id)
                 node = Node.load(node_id, node_content["node_type"], node_content)
+                if renamed:
+                    node.x += 100
+                    node.y += 100
                 self.add_node(node)
 
             link_renamings = {}
@@ -242,10 +248,10 @@ class Network:
             for (link_id, link_content) in links.items():
                 # check for collision with existing links ids, rename if necessary
                 if link_id in self.links:
-                    link_renamings[link_id] = str(uuid.uuid4())
+                    link_renamings[link_id] = "l"+str(uuid.uuid4())
                     link_id = link_renamings[link_id]
                 added_link_ids.append(link_id)
-                link = Link.load(link_id, link_content)
+                link = Link.load(link_id, link_content, node_renamings)
                 self.add_link(link)
 
             metadata = self.get_metadata()
@@ -272,7 +278,7 @@ class Network:
                         if node_id in self.nodes:
                             if node_id not in node_renamings:
                                 # create a new node renaming
-                                node_renamings[node_id] = str(uuid.uuid4())
+                                node_renamings[node_id] = "n"+str(uuid.uuid4())
                             storage_comps[1] = node_renamings[node_id]
                             zipinfo.filename = "/".join(storage_comps)
 
@@ -310,7 +316,7 @@ class Network:
             saved = self.save()
             f = to_file if to_file else io.BytesIO()
             zf = zipfile.ZipFile(f, "w")
-            zf.writestr("topology.json", json.dumps(saved))
+            zf.writestr("topology.json", json.dumps(saved,indent=4))
             for subdir in ["node","package"]:
                 for root, dirs, files in os.walk(os.path.join(self.savedir,subdir)):
                     for file in files:
@@ -325,5 +331,5 @@ class Network:
         path = os.path.join(self.savedir,"topology.json")
         self.logger.info("saving: "+path)
         with open(path,"w") as f:
-            f.write(json.dumps(saved))
+            f.write(json.dumps(saved,indent=4))
 

@@ -85,7 +85,7 @@ class ExecutionThread(threading.Thread):
         self.pending_configuration_messages = {}
 
         self.logger = logging.getLogger("ExecutionThread")
-
+        self.__futures = set()
         self.failed = False
 
     def fail(self):
@@ -206,7 +206,6 @@ class ExecutionThread(threading.Thread):
         else:
             self.mark_dirty(link.to_node_id)
         self.dispatch()
-
 
     @async_exception_safe
     async def link_removed(self, link_id):
@@ -375,8 +374,6 @@ class ExecutionThread(threading.Thread):
         if node_id in self.dirty_nodes:
             return
 
-        if node_id in self.state.node_outputs:
-            del self.state.node_outputs[node_id]
         self.dirty_nodes[node_id] = True
 
         self.set_node_execution_state(node_id, NodeExecutionStates.pending)
@@ -457,6 +454,8 @@ class ExecutionThread(threading.Thread):
     def post_execute(self, node_id, result, exn):
         if node_id in self.executing_nodes:
             del self.executing_nodes[node_id]
+        if node_id in self.state.node_outputs:
+            del self.state.node_outputs[node_id]
         if result is not None:
             self.state.node_outputs[node_id] = {}
             output_port_names = self.network.get_output_ports(node_id)
