@@ -19,7 +19,7 @@
 
 import json
 
-class NumberDisplay:
+class NumberDisplayNode:
 
     def __init__(self, services):
         self.services = services

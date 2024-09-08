@@ -8,43 +8,25 @@
     "executor": "python",
     "dependencies": [],
     "configuration": {
-        "classname": "configuration.Configuration"
+        "classname": "numberstream_configuration.NumberstreamConfiguration"
     },
     "node_types": {
-        "number_producer": {
+        "number_input_node": {
             "metadata": {
-                "name": "Number Source",
-                "description": "Emit a number"
+                "name": "Input Number Node",
+                "description": "Input a number"
             },
             "output_ports": {
                 "data_out": {
                     "link_type": "numberstream:number"
                 }
             },
-            "classname": "nodes.number_producer.NumberProducer"
+            "classname": "nodes.number_input_node.NumberInputNode"
         },
-        "number_transformer": {
+        "sum_node": {
             "metadata": {
-                "name": "Number transformer",
-                "description": "Transform an input number and output it"
-            },
-            "input_ports": {
-                "data_in": {
-                    "allow_multiple_connections": false,
-                    "link_type": "numberstream:number"
-                }
-            },
-            "output_ports": {
-                "data_out": {
-                    "link_type": "numberstream:number"
-                }
-            },
-            "classname": "nodes.number_transformer.NumberTransformer"
-        },
-        "number_aggregator": {
-            "metadata": {
-                "name": "Number Aggregator",
-                "description": "Aggregate any input number(s) received"
+                "name": "Number Sum",
+                "description": "Sum any input number(s) received"
             },
             "input_ports": {
                 "data_in": {
@@ -56,21 +38,22 @@
                     "link_type": "numberstream:number"
                 }
             },
-            "classname": "nodes.number_aggregator.NumberAggregator"
+            "classname": "nodes.sum_node.SumNode"
         },
-         "number_display": {
+         "number_display_node": {
             "metadata": {
                 "name": "Number Display",
                 "description": "Display any received number(s)"
             },
             "input_ports": {
                 "data_in": {
-                    "link_type": "numberstream:number"
+                    "link_type": "numberstream:number",
+                    "allow_multiple_connections": false
                 }
             },
             "output_ports": {
             },
-            "classname": "nodes.number_display.NumberDisplay"
+            "classname": "nodes.number_display_node.NumberDisplayNode"
         }
     },
     "link_types": {

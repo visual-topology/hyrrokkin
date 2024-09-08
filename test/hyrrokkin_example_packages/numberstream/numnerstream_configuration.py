@@ -18,13 +18,15 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-class Configuration:
+class NumberstreamConfiguration:
 
     def __init__(self, services):
-        self.services = services
+        # the services API is similar to that provided to a node
+        # except that the reset_run method is not supported
+        self.services = services 
 
-    def get_offset(self):
-        return 0
+    def get_is_readonly(self):
+        return self.services.get_property("readonly",False)
 
 
 

@@ -22,7 +22,7 @@ from hyrrokkin.base.configuration_base import ConfigurationBase
 from hyrrokkin.exceptions.node_execution_failed import NodeExecutionFailed
 from hyrrokkin.services.status_states import StatusStates
 
-from src.hyrrokkin.utils.type_hints import JsonType
+from hyrrokkin.utils.type_hints import JsonType
 
 class NodeServices:
 
@@ -74,14 +74,6 @@ class NodeServices:
         Clear any previous status message on the node
         """
         self.wrapper.set_status(StatusStates.clear.value, "")
-
-    def note_still_running(self, is_still_running):
-        """
-        Indicate if execution is continuing after the execute method has completed
-
-        Each call to note_still_running(true) should be balanced with a later call to note_still_running(false)
-        """
-        pass
 
     def request_run(self):
         """
@@ -146,14 +138,7 @@ class NodeServices:
         """
         return self.wrapper.get_configuration().get_instance()
 
-    def get_connections(self) -> dict:
-        """
-        Obtain a dictionary object describing the input and output port connections.
-
-        Returns:
-            dict
-        """
-        return self.wrapper.get_connections()
+    
 
 
 

@@ -18,7 +18,7 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-class NumberProducer:
+class NumberInputNode:
 
     def __init__(self, services):
         self.services = services

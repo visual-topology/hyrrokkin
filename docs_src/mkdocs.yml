@@ -1,11 +1,11 @@
 site_name: "hyrrokkin documentation"
 
 theme:
-  name: "material"
+  name: "readthedocs"
+    #  name: "material"
 
 plugins:
   - mkdocstrings
-
 docs_dir: docs
 
 site_dir: ../docs
