@@ -231,11 +231,12 @@ class Network:
 
             for (node_id, node_content) in nodes.items():
                 # check for collision with existing node ids, rename if necessary
-                renamed = False
-                if node_id in self.nodes:
+                if node_id in self.nodes and node_id not in node_renamings:
                     node_renamings[node_id] = "n"+str(uuid.uuid4())
-                    node_id = node_renamings[node_id]
-                    renamed = True
+
+                renamed = node_id in node_renamings
+                node_id = node_renamings.get(node_id,node_id)
+
                 added_node_ids.append(node_id)
                 node = Node.load(node_id, node_content["node_type"], node_content)
                 if renamed:
@@ -254,26 +255,26 @@ class Network:
                 link = Link.load(link_id, link_content, node_renamings)
                 self.add_link(link)
 
+            # do not overwrite existing metadata...
             metadata = self.get_metadata()
             new_metadata = from_dict.get("metadata", {})
             for key in new_metadata:
-                metadata[key] = new_metadata[key]
+                if key not in metadata:
+                    metadata[key] = new_metadata[key]
             self.set_metadata(metadata)
 
             return (added_node_ids, added_link_ids, node_renamings)
 
-    def load_zip(self, f):
+    def load_zip(self, f, merging=False):
         with self.lock:
             node_renamings = {}
             with zipfile.ZipFile(f) as zf:
-                zf.extract("topology.json", self.savedir)
-
                 zipinfos = zf.infolist()
                 for zipinfo in zipinfos:
                     # if there is a collision on node id with an existing node
                     # rename the new node and extract files to the new folder
                     storage_comps = zipinfo.filename.split("/")
-                    if storage_comps[0] == "node":
+                    if merging and storage_comps[0] == "node":
                         node_id = storage_comps[1]
                         if node_id in self.nodes:
                             if node_id not in node_renamings:
@@ -285,18 +286,26 @@ class Network:
                 extract_zipinfos = [zipinfo for zipinfo in zipinfos if zipinfo.filename.startswith("node") or zipinfo.filename.startswith("package")]
 
                 for zipinfo in extract_zipinfos:
+                    if merging and zipinfo.filename.startswith("package"):
+                        continue # if merging, do not overwrite existing package properties and data
                     zf.extract(zipinfo,self.savedir)
-            return self.load_dir(node_renamings)
+                zf.extract("topology.json", self.savedir)
 
-    def load_dir(self, node_renamings):
+            return self.load_dir(node_renamings, merging=merging)
+
+    def load_dir(self, node_renamings, merging=False):
         with self.lock:
             json_path = os.path.join(self.savedir, "topology.json")
+            loaded_node_ids = []
+            loaded_link_ids = []
             if os.path.exists(json_path):
                 with open(json_path) as f:
                     saved_topology = json.loads(f.read())
                     (loaded_node_ids, loaded_link_ids, node_renamings) = self.load(saved_topology,node_renamings)
-                    return (loaded_node_ids, loaded_link_ids, node_renamings)
-            return ([],[],node_renamings)
+                if merging:
+                    with open(json_path,"w") as of:
+                        of.write(json.dumps(self.save()))
+            return (loaded_node_ids, loaded_link_ids, node_renamings)
 
     def save(self):
         with self.lock:

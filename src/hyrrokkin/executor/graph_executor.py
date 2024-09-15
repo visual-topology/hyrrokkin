@@ -28,18 +28,24 @@ from hyrrokkin.executor.execution_client import ExecutionClient
 
 class GraphExecutor:
 
-    def __init__(self, schema, status_callback, node_execution_callback, execution_complete_callback,
-                 execution_folder="."):
+    def __init__(self, schema, status_callback, node_execution_callback, execution_folder="."):
         self.network = Network(schema, execution_folder)
         self.queue = queue.Queue()
         self.stop_on_execution_complete = False
         self.status_callback = status_callback
         self.node_execution_callback = node_execution_callback
-        self.execution_complete_callback = execution_complete_callback
-        self.et = None
         self.state = ExecutionState()
         self.paused = False
+        self.reset()
+        self.injected_inputs = {}
+        self.output_listeners = {}
+
+    def reset(self):
+        self.execution_complete_callback = None
+        self.et = None
         self.execution_clients = {}
+        self.injected_inputs = {}
+        self.output_listeners = {}
 
     def pause(self):
         self.paused = True
@@ -53,6 +59,14 @@ class GraphExecutor:
 
     def is_paused(self):
         return self.paused
+
+    def inject_input(self, node_port, value):
+        (node,port) = node_port
+        self.injected_inputs[(node,port)] = value
+
+    def add_output_listener(self, node_port, listener):
+        (node, port) = node_port
+        self.output_listeners[(node,port)] = listener
 
     def attach_client(self, target_id, client_id, message_callback, client_options):
         self.detach_client(target_id, client_id) # in case a client with the same id is already connected to the target
@@ -72,7 +86,7 @@ class GraphExecutor:
 
     def run(self, terminate_on_complete=False):
 
-        self.et = ExecutionThread(self, self.queue, self.network, self.state)
+        self.et = ExecutionThread(self, self.queue, self.network, self.state, injected_inputs=self.injected_inputs, output_listeners=self.output_listeners)
         for (id, client_id) in self.execution_clients:
             client = self.execution_clients[(id, client_id)]
             client.connect_execution(self.et)
@@ -96,11 +110,34 @@ class GraphExecutor:
             client = self.execution_clients[(id, client_id)]
             client.disconnect()
 
+        return self.wait()
+
+    def start(self):
+        self.et = ExecutionThread(self, self.queue, self.network, self.state, injected_inputs=self.injected_inputs, output_listeners=self.output_listeners)
+        for (id, client_id) in self.execution_clients:
+            client = self.execution_clients[(id, client_id)]
+            client.connect_execution(self.et)
+            self.et.schedule_open_client(id, client_id, client.get_client_options())
+
+        self.et.start()
+
+        self.stop_on_execution_complete = False
+
+        self.et.schedule_run(False)
+
+        while True:
+            notify_fn = self.queue.get()
+            if notify_fn is None:
+                break
+            else:
+                notify_fn(self)
+
+    def wait(self):
         self.et.join()
         self.et.loop.close()
         self.et.close()
         result = not self.et.is_failed()
-        self.et = None
+        self.reset()
         return result
 
     def stop(self):
@@ -175,8 +212,8 @@ class GraphExecutor:
                 self.et.schedule_link_added(link)
         return (added_node_ids, added_link_ids, node_renamings)
 
-    def load_zip(self, f):
-        (added_node_ids, added_link_ids, node_renamings) = self.network.load_zip(f)
+    def load_zip(self, f, merging=False):
+        (added_node_ids, added_link_ids, node_renamings) = self.network.load_zip(f,merging=merging)
         for node_id in added_node_ids:
             node = self.network.get_node(node_id)
             if self.et:
@@ -222,6 +259,9 @@ class GraphExecutor:
         if self.node_execution_callback:
             self.node_execution_callback(node_id, node_execution_state, exn_or_result)
         return False
+
+    def set_execution_complete_callback(self, execution_complete_callback):
+        self.execution_complete_callback = execution_complete_callback
 
     def execution_complete_update(self):
         if self.execution_complete_callback:

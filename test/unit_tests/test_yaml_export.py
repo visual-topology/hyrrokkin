@@ -26,7 +26,7 @@ from hyrrokkin.utils.yaml_exporter import export_to_yaml
 
 logging.basicConfig(level=logging.INFO)
 
-numberstream_package = "hyrrokkin_example_packages.numberstream"
+numberstream_package = "hyrrokkin.example_packages.numberstream"
 
 test_yaml = """
 metadata:
@@ -36,23 +36,18 @@ configuration:
     key1: value1
 nodes:
   n0:
-    type: numberstream:number_producer
+    type: numberstream:integer_value_node
     properties:
       value: 99
   n1:
-    type: numberstream:number_transformer
-    properties:
-      fn: 'lambda x: x*2'
-  n2:
-    type: numberstream:number_aggregator
+    type: numberstream:find_prime_factors_node
     properties: {}
-  n3:
-    type: numberstream:number_display
+  n2:
+    type: numberstream:integerlist_display_node
     properties: {}
 links:
 - n0 => n1
 - n1 => n2
-- n2 => n3
 """
 
 
@@ -65,13 +60,11 @@ class YamlImportTests(unittest.TestCase):
         t = Topology(tempfile.mkdtemp(),[numberstream_package])
         t.set_metadata({"name":"test topology"})
         t.set_package_property("numberstream","key1","value1")
-        t.add_node("n0", "numberstream:number_producer", {"value": 99})
-        t.add_node("n1", "numberstream:number_transformer", {"fn": "lambda x: x*2"})
-        t.add_node("n2", "numberstream:number_aggregator", {})
-        t.add_node("n3", "numberstream:number_display", {})
+        t.add_node("n0", "numberstream:integer_value_node", {"value": 99})
+        t.add_node("n1", "numberstream:find_prime_factors_node", {})
+        t.add_node("n2", "numberstream:integerlist_display_node", {})
         t.add_link("l0", "n0", "data_out", "n1", "data_in")
         t.add_link("l1", "n1", "data_out", "n2", "data_in")
-        t.add_link("l2", "n2", "data_out", "n3", "data_in")
 
         with tempfile.NamedTemporaryFile(suffix=".yaml", delete=True) as yamlf:
             with open(yamlf.name,"w") as of:

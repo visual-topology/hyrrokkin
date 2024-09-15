@@ -45,7 +45,7 @@ def async_exception_safe(func):
 
 class ExecutionThread(threading.Thread):
 
-    def __init__(self, graph_executor, executor_queue, network, state=None, execution_limit=4):
+    def __init__(self, graph_executor, executor_queue, network, state=None, execution_limit=4, injected_inputs={}, output_listeners={}):
         super().__init__()
         self.graph_executor = graph_executor
         self.executor_queue = executor_queue
@@ -54,6 +54,8 @@ class ExecutionThread(threading.Thread):
         self.configuration_wrappers = {}
         self.network = network
         self.execution_limit = execution_limit
+        self.injected_inputs = injected_inputs
+        self.output_listeners = output_listeners
 
         # lookup incoming links by node-id and port
         self.in_links = {}  # in-node-id => in-port => [link]
@@ -424,12 +426,17 @@ class ExecutionThread(threading.Thread):
     def pre_execute(self, node_id):
         inputs = {}
         # collect together the input values at each input port
+        # start with output vaues from connected ports
         for input_port_name in self.network.get_input_ports(node_id):
             inputs[input_port_name] = []
             for (output_node_id, output_port) in self.network.get_inputs_to(node_id, input_port_name):
                 predecessor_outputs = self.state.node_outputs[output_node_id]
                 if output_port in predecessor_outputs:
                     inputs[input_port_name].append(predecessor_outputs[output_port])
+        # add in any injected input values
+        for input_port_name in self.network.get_input_ports(node_id):
+            if (node_id, input_port_name) in self.injected_inputs:
+                inputs[input_port_name].append(self.injected_inputs[(node_id,input_port_name)])
         return inputs
 
     @async_exception_safe
@@ -469,6 +476,10 @@ class ExecutionThread(threading.Thread):
                 if port_name not in output_port_names:
                     self.logger.warning(f"Output at unexpected port {port_name} after execution of {node_id}")
 
+            for port_name in result:
+                if (node_id, port_name) in self.output_listeners:
+                    self.output_listeners[(node_id,port_name)](result[port_name])
+
     def schedule_node_added(self, node):
         asyncio.run_coroutine_threadsafe(self.node_added(node), self.loop)
 
@@ -485,6 +496,7 @@ class ExecutionThread(threading.Thread):
         asyncio.run_coroutine_threadsafe(self.open_client(target_id, client_id, client_options), self.loop)
 
     def schedule_recv_message(self, target_id, client_id, *msg):
+        print("schedule_recv_message")
         asyncio.run_coroutine_threadsafe(self.recv_message(target_id, client_id, *msg), self.loop)
 
     def schedule_close_client(self, node_id, client_id):

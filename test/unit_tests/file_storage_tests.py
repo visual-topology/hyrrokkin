@@ -23,7 +23,7 @@ import tempfile
 
 from hyrrokkin.api.topology import Topology
 
-numberstream_package = "hyrrokkin_example_packages.numberstream"
+numberstream_package = "hyrrokkin.example_packages.numberstream"
 
 class FileStorageTests(unittest.TestCase):
 
@@ -35,7 +35,7 @@ class FileStorageTests(unittest.TestCase):
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as saved:
 
             t = Topology(tempfile.mkdtemp(),[numberstream_package])
-            t.add_node("n0", "numberstream:number_producer", {"value": 99})
+            t.add_node("n0", "numberstream:integer_value_node", {"value": 99})
 
 
             test_binary1 = b"34723974"
@@ -49,12 +49,12 @@ class FileStorageTests(unittest.TestCase):
             self.assertIsNone(t.get_node_data("n0", "abc1"))
 
             with open(saved.name, "wb") as f:
-                t.save(f)
+                t.save_zip(f)
 
             t2 = Topology(tempfile.mkdtemp(),[numberstream_package])
 
             with open(saved.name, "rb") as f:
-                t2.load(f)
+                t2.load_zip(f)
 
 
             self.assertEqual(test_binary1, t2.get_node_data("n0", "abc0"))
@@ -71,12 +71,12 @@ class FileStorageTests(unittest.TestCase):
             t.set_package_data("numberstream","abc_0", test_binary1)
 
             with open(saved.name, "wb") as f:
-                t.save(f)
+                t.save_zip(f)
 
             t2 = Topology(tempfile.mkdtemp(),[numberstream_package])
 
             with open(saved.name, "rb") as f:
-                t2.load(f)
+                t2.load_zip(f)
 
             self.assertEqual(test_binary1, t2.get_package_data("numberstream", "abc_0"))
 

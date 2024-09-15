@@ -18,16 +18,16 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-class NumberInputNode:
+class NumberstreamConfiguration:
 
     def __init__(self, services):
-        self.services = services
+        # the services API is similar to that provided to a node
+        # except that the reset_run method is not supported
+        self.services = services 
 
-    def reset_run(self):
-        pass
 
-    async def run(self, inputs):
-        value = self.services.get_property("value", 10)
-        return { "data_out": value }
+
+
+
 
 

@@ -1,0 +1,73 @@
+{
+    "id": "numberstream",
+    "metadata": {
+        "name": "Number Stream",
+        "version": "0.0.1",
+        "description": "package for generating and manipulating streams of numbers"
+    },
+    "executor": "python",
+    "dependencies": [],
+    "configuration": {
+        "classname": "numberstream_configuration.NumberstreamConfiguration"
+    },
+    "node_types": {
+        "integer_value_node": {
+            "metadata": {
+                "name": "Define and output an integer value",
+                "description": "Integer Value"
+            },
+            "output_ports": {
+                "data_out": {
+                    "link_type": "numberstream:integer"
+                }
+            },
+            "classname": "nodes.number_input_node.NumberInputNode"
+        },
+        "find_prime_factors_node": {
+            "metadata": {
+                "name": "Find Prime Factors",
+                "description": "Calculate the prime factors of each input number"
+            },
+            "input_ports": {
+                "data_in": {
+                    "allow_multiple_connections": false,
+                    "link_type": "numberstream:integer"
+                }
+            },
+            "output_ports": {
+                "data_out": {
+                    "link_type": "numberstream:integerlist"
+                }
+            },
+            "classname": "nodes.prime_factors_node.PrimeFactorsNode"
+        },
+        "integerlist_display_node": {
+            "metadata": {
+                "name": "Integers Display",
+                "description": "Display any received lists of integers"
+            },
+            "input_ports": {
+                "data_in": {
+                    "link_type": "numberstream:integerlist"
+                }
+            },
+            "output_ports": {
+            },
+            "classname": "nodes.number_display_node.NumberDisplayNode"
+        }
+    },
+    "link_types": {
+        "integer": {
+            "metadata": {
+                "name": "Integer",
+                "description": "This type of link carries values consisting of a single integer"
+            }
+        },
+        "integerlist": {
+            "metadata": {
+                "name": "IntegerList",
+                "description": "This type of link carries values consisting of a list of integers"
+            }
+        }
+    }
+}

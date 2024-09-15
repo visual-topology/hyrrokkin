@@ -17,18 +17,34 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import json
 
-class NumberstreamConfiguration:
+class NumberDisplayNode:
 
     def __init__(self, services):
-        # the services API is similar to that provided to a node
-        # except that the reset_run method is not supported
-        self.services = services 
+        self.services = services
+        self.clients = {}
 
-    def get_is_readonly(self):
-        return self.services.get_property("readonly",False)
+    def reset_run(self):
+        for client_id in self.clients:
+            self.clients[client_id](None)
 
+    def run(self, inputs):
+        values = inputs.get("data_in",[])
+        if len(values):
+            s = json.dumps(values[0])
+            self.services.set_status_info(s)
+            for send_fn in self.clients.values():
+                print("sending: "+str(values[0]))
+                send_fn(values[0])
 
+        return None
 
+    def open_client(self, client_id, client_options, send_fn):
+        self.clients[client_id] = send_fn
 
+    def close_client(self, client_id):
+        del self.clients[client_id]
 
+    def close(self):
+        pass

@@ -79,6 +79,7 @@ class NodeServices:
         """
         Request that this node be executed
         """
+        print("request run")
         self.wrapper.request_execution()
 
     def get_property(self, property_name:str, default_value:JsonType=None) -> JsonType:

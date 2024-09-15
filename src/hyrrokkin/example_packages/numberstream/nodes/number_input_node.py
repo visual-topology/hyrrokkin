@@ -17,32 +17,29 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import json
 
-class NumberDisplayNode:
+class NumberInputNode:
 
     def __init__(self, services):
         self.services = services
 
-    def run(self, inputs):
-        values = inputs["data_in"]
-        s = json.dumps(values)
-        self.services.set_status_info(s)
-        self.services.set_data("results",s.encode("utf-8"))
-        return {}
+    def open_client(self,client_id, client_options, send_fn):
+        return lambda *msg: self.__handle_message(client_id, *msg)
 
-    def open_client(self, client_id, client_options, send_fn):
-        def echo(*msg):
-            try:
-                msg = ["Echo"]+list(msg)
-                send_fn(*msg)
-            except Exception as ex:
-                print(ex)
-
-        return echo
+    def __handle_message(self,client_id,*msg):
+        new_value = msg[0]
+        if not (isinstance(new_value,int)):
+            # warn that the client has provided an invalid value
+            self.services.set_status_warning("New vlue requested by client is not integer")
+        else:
+            self.services.set_property("value",new_value)
+            self.services.request_run()
 
     def reset_run(self):
         pass
 
-    def close(self):
-        pass
+    async def run(self, inputs):
+        value = self.services.get_property("value", 10)
+        return { "data_out": value }
+
+

@@ -26,7 +26,7 @@ from hyrrokkin.utils.yaml_importer import import_from_yaml
 
 logging.basicConfig(level=logging.INFO)
 
-numberstream_package = "hyrrokkin_example_packages.numberstream"
+numberstream_package = "hyrrokkin.example_packages.numberstream"
 
 test_yaml = """
 nodes:
