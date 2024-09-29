@@ -31,7 +31,6 @@ class NodeServices:
     """
 
     def __init__(self, node_id: str):
-        
         self.node_id = node_id
         self.wrapper = None
 
@@ -79,7 +78,6 @@ class NodeServices:
         """
         Request that this node be executed
         """
-        print("request run")
         self.wrapper.request_execution()
 
     def get_property(self, property_name:str, default_value:JsonType=None) -> JsonType:
@@ -138,6 +136,20 @@ class NodeServices:
             a configuration object or None
         """
         return self.wrapper.get_configuration().get_instance()
+
+    def get_connected_nodes(self, port_name:str, is_input_port: bool) -> list[object]:
+        """
+        Get a list of nodes that are connected to an input or output port
+
+        Args:
+            port_name: the name of the port
+            is_input_port: whether the named port is an input or output port
+
+        Returns:
+            a list of node instances that are connected to this node via the specified port
+        """
+        return self.wrapper.get_connected_node_instances(port_name, is_input_port)
+
 
     
 

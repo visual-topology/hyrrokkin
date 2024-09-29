@@ -27,21 +27,21 @@ class NumberDisplayNode:
 
     def reset_run(self):
         for client_id in self.clients:
-            self.clients[client_id](None)
+            self.clients[client_id].send_message(None)
 
     def run(self, inputs):
         values = inputs.get("data_in",[])
         if len(values):
             s = json.dumps(values[0])
             self.services.set_status_info(s)
-            for send_fn in self.clients.values():
+            for client_service in self.clients.values():
                 print("sending: "+str(values[0]))
-                send_fn(values[0])
+                client_service.send_message(values[0])
 
         return None
 
-    def open_client(self, client_id, client_options, send_fn):
-        self.clients[client_id] = send_fn
+    def open_client(self, client_id, client_options, client_service):
+        self.clients[client_id] = client_service
 
     def close_client(self, client_id):
         del self.clients[client_id]

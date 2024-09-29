@@ -18,6 +18,7 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from .client_service import ClientService
+from hyrrokkin.utils.resource_loader import ResourceLoader
 
 class Wrapper:
 
@@ -33,25 +34,18 @@ class Wrapper:
     def get_instance(self):
         return self.instance
 
-    def open_client(self, client_id, client_options):
+    def open_client(self, client_id, client_options, client_service_class):
 
         def message_forwarder(*message_parts):
             # send a message to a client
             self.executor.message_update((self.get_type(), self.get_id()), client_id, *message_parts)
-
-        client_service = ClientService(message_forwarder)
-        self.client_services[client_id] = client_service
         try:
             if hasattr(self.instance, "open_client"):
-                rec_fn = self.instance.open_client(client_id, client_options, lambda *msg: client_service.send_message(*msg))
-                if rec_fn:
-                    def safe_rec(*msg):
-                        try:
-                            rec_fn(*msg)
-                        except Exception as ex:
-                            self.logger.exception(f"Error receiving message into {str(self)}")
-
-                    client_service.set_message_handler(lambda *msg: safe_rec(*msg))
+                cls = ResourceLoader.get_class(client_service_class)
+                client_service = cls()
+                client_service.open(message_forwarder)
+                self.client_services[client_id] = client_service
+                self.instance.open_client(client_id, client_options, client_service)
         except:
             self.logger.exception(f"Error in open_client for {str(self)}")
 

@@ -1,14 +1,15 @@
-
+import hyrrokkin.services.client_service
 from hyrrokkin.utils.type_hints import JsonType
 from hyrrokkin.utils.type_hints import ClientMessageProtocol
+from hyrrokkin.base.client_service_base import ClientServiceBase
 
 class TopologyInteractor:
 
-    def __init__(self, executor):
+    def __init__(self, executor, client_service_classes:tuple[str,str]):
         self.executor = executor
+        self.client_service_classes = client_service_classes # (client-side,execution-side)
 
-    def attach_node_client(self, node_id: str, client_id: str | tuple[str, str],
-                           message_callback: ClientMessageProtocol, client_options: dict = {}) -> ClientMessageProtocol:
+    def attach_node_client(self, node_id: str, client_id: str | tuple[str, str], client_options: dict = {}) -> ClientServiceBase:
         """
         Attach a client instance to a node.  Any client already attached to the node with the same client_id
         will be detached.
@@ -16,13 +17,13 @@ class TopologyInteractor:
         Args:
             node_id: the node to which the client is to be attached
             client_id: a identifier for the client, unique in the context of the node
-            message_callback: a function that is called when a message is sent from the node to this client
             client_options: optional, a dictionary with extra parameters from the client
 
         Returns:
-            a function that can be used to send messages to the node
+             an object which implements the ClientService API and provides methods to interact with the client
+
         """
-        return self.executor.attach_client(("node", node_id), client_id, message_callback, client_options)
+        return self.executor.attach_client(("node", node_id), client_id, client_options, self.client_service_classes)
 
     def detach_node_client(self, node_id: str, client_id: str | tuple[str, str]):
         """
@@ -34,22 +35,19 @@ class TopologyInteractor:
         """
         self.executor.detach_client(("node", node_id), client_id)
 
-    def attach_configuration_client(self, package_id: str, client_id: str | tuple[str, str],
-                                    message_callback: ClientMessageProtocol,
-                                    client_options: dict = {}) -> ClientMessageProtocol:
+    def attach_configuration_client(self, package_id: str, client_id: str | tuple[str, str], client_options: dict = {}) -> ClientServiceBase:
         """
         Attach a client instance to a package configuration
 
         Args:
             package_id: the package configuration to which the client is to be attached
             client_id: an identifier for the client, unique in the context of the package configuration
-            message_callback: a function that is called when a message is sent from the node to this client
             client_options: optional, a dictionary with extra parameters for the client
 
         Returns:
-            a function that can be used to send messages to the node
+             an object which implements the ClientService API and provides methods to interact with the client
         """
-        return self.executor.attach_client(("configuration", package_id), client_id, message_callback, client_options)
+        return self.executor.attach_client(("configuration", package_id), client_id, client_options, self.client_service_classes)
 
     def detach_configuration_client(self, package_id: str, client_id: str | tuple[str, str]):
         """

@@ -118,13 +118,13 @@ class Topology:
 
         return self.executor.run(terminate_on_complete=True)
 
-    def create_interactive_session(self) -> TopologyInteractor:
+    def create_interactive_session(self, client_service_classes:tuple[str,str]=("hyrrokkin.services.client_service.ClientService","hyrrokkin.services.client_service.ClientService")) -> TopologyInteractor:
         """
         Run the topology interactively
 
         Returns: a TopologyInteractor instance that allows the execution to be stopped and clients to be attached and detached
         """
-        return TopologyInteractor(self.executor)
+        return TopologyInteractor(self.executor, client_service_classes)
 
     def set_metadata(self, metadata: dict[str, str]):
         """
@@ -200,8 +200,6 @@ class Topology:
             property_value: the value of the property, must be JSON serialisable
         """
         self.dsu.set_node_property(node_id, property_name, property_value)
-        if self.executor:
-            self.executor.mark_dirty_from(node_id)
 
     def get_node_data(self, node_id: str, key: str) -> Union[bytes, str, None]:
         """
@@ -226,7 +224,6 @@ class Topology:
             data: data to be stored
         """
         self.dsu.set_node_data(node_id, key, data)
-        self.executor.mark_dirty_from(node_id)
 
     def get_package_property(self, package_id: str, property_name: str) -> JsonType:
         """

@@ -85,4 +85,10 @@ class PrimeFactorsNode:
     def connections_changed(self, input_connection_counts, output_connection_counts):
         if input_connection_counts.get("data_in",0) == 0:
             self.services.set_status_warning("No inputs are currently connected")
+        else:
+            print("Connections: inputs=" + json.dumps(input_connection_counts) + " outputs="+json.dumps(output_connection_counts))
+        for input_node in self.services.get_connected_nodes("data_in",True):
+            print("Input node: "+str(input_node))
 
+        for output_node in self.services.get_connected_nodes("data_out",False):
+            print("Output node: "+str(output_node))

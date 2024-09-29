@@ -22,9 +22,8 @@ import queue
 from hyrrokkin.model.network import Network
 
 from hyrrokkin.executor.execution_thread import ExecutionThread
-from hyrrokkin.executor.execution_state import ExecutionState
 from hyrrokkin.executor.execution_client import ExecutionClient
-
+from hyrrokkin.utils.resource_loader import ResourceLoader
 
 class GraphExecutor:
 
@@ -34,7 +33,6 @@ class GraphExecutor:
         self.stop_on_execution_complete = False
         self.status_callback = status_callback
         self.node_execution_callback = node_execution_callback
-        self.state = ExecutionState()
         self.paused = False
         self.reset()
         self.injected_inputs = {}
@@ -68,14 +66,16 @@ class GraphExecutor:
         (node, port) = node_port
         self.output_listeners[(node,port)] = listener
 
-    def attach_client(self, target_id, client_id, message_callback, client_options):
+    def attach_client(self, target_id, client_id, client_options, client_service_classes):
         self.detach_client(target_id, client_id) # in case a client with the same id is already connected to the target
-        client = ExecutionClient(target_id, client_id, message_callback, client_options)
+        cls = ResourceLoader.get_class(client_service_classes[0])
+        client_service = cls()
+        client = ExecutionClient(target_id, client_id, client_service, client_options, client_service_classes[1])
         self.execution_clients[(target_id, client_id)] = client
         if self.et:
             client.connect_execution(self.et)
-            self.et.schedule_open_client(target_id, client_id, client_options)
-        return lambda *msg: client.send_message(*msg)
+            self.et.schedule_open_client(target_id, client_id, client_options, client_service_classes[1])
+        return client_service
 
     def detach_client(self, target_id, client_id):
         if (target_id, client_id) in self.execution_clients:
@@ -86,11 +86,11 @@ class GraphExecutor:
 
     def run(self, terminate_on_complete=False):
 
-        self.et = ExecutionThread(self, self.queue, self.network, self.state, injected_inputs=self.injected_inputs, output_listeners=self.output_listeners)
+        self.et = ExecutionThread(self, self.queue, self.network, injected_inputs=self.injected_inputs, output_listeners=self.output_listeners)
         for (id, client_id) in self.execution_clients:
             client = self.execution_clients[(id, client_id)]
             client.connect_execution(self.et)
-            self.et.schedule_open_client(id, client_id, client.get_client_options())
+            self.et.schedule_open_client(id, client_id, client.get_client_options(), client.get_execution_client_service_class())
 
         self.et.start()
 
@@ -113,11 +113,11 @@ class GraphExecutor:
         return self.wait()
 
     def start(self):
-        self.et = ExecutionThread(self, self.queue, self.network, self.state, injected_inputs=self.injected_inputs, output_listeners=self.output_listeners)
+        self.et = ExecutionThread(self, self.queue, self.network, injected_inputs=self.injected_inputs, output_listeners=self.output_listeners)
         for (id, client_id) in self.execution_clients:
             client = self.execution_clients[(id, client_id)]
             client.connect_execution(self.et)
-            self.et.schedule_open_client(id, client_id, client.get_client_options())
+            self.et.schedule_open_client(id, client_id, client.get_client_options(), client.get_execution_client_service_class())
 
         self.et.start()
 
@@ -230,12 +230,6 @@ class GraphExecutor:
     def get_metadata(self):
         return self.network.get_metadata()
 
-    def mark_dirty_from(self, node_id):
-        dirty_nodes = self.network.get_node_ids_from(node_id)
-        for dirty_node_id in dirty_nodes:
-            if dirty_node_id in self.state.node_outputs:
-                del self.state.node_outputs[dirty_node_id]
-
     def request_node_execution(self, node_id):
         self.et.schedule_request_node_execution(node_id)
 
@@ -267,6 +261,10 @@ class GraphExecutor:
         if self.execution_complete_callback:
             self.execution_complete_callback()
         return self.stop_on_execution_complete
+
+    def get_connected_node_instances(self, node_id, port_name, is_input_port):
+        return self.et.get_connected_node_instances(node_id, port_name, is_input_port)
+
 
 
 

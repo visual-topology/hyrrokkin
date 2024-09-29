@@ -17,12 +17,18 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-class ClientService:
+from hyrrokkin.base.client_service_base import ClientServiceBase
 
-    def __init__(self, message_forwarder):
-        self.message_forwarder = message_forwarder
+class ClientService(ClientServiceBase):
+
+    def __init__(self):
+        self.message_forwarder = None
         self.message_handler = None
         self.pending_messages = [] # messages to the node that cannot yet be delivered without a message handler
+        self.is_open = False
+
+    def open(self, message_forwarder):
+        self.message_forwarder = message_forwarder
         self.is_open = True
 
     def send_message(self, *msg):

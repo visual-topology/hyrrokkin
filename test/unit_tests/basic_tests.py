@@ -66,9 +66,12 @@ class BasicTests(unittest.TestCase):
         received_messages = []
 
         session = t.create_interactive_session()
-        sender = session.attach_node_client("n0","test", lambda *msg: None)
-        sender(100)
-        session.attach_node_client("n2","test",lambda msg: received_messages.append(msg) if msg else None)
+
+        client_service_n0 = session.attach_node_client("n0","test")
+        client_service_n0.send_message(100)
+
+        client_service_n2 = session.attach_node_client("n2","test")
+        client_service_n2.set_message_handler(lambda msg: received_messages.append(msg) if msg else None)
         session.run(lambda: session.stop())
 
         self.assertEqual(received_messages,[[2,2,5,5]])

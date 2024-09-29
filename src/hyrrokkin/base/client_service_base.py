@@ -17,9 +17,40 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-class ExecutionState:
+from abc import abstractmethod
 
-    def __init__(self, node_outputs=None):
-        self.node_outputs = node_outputs if node_outputs is not None else {}
+class ClientServiceBase:
+
+    @abstractmethod
+    def open(self, message_forwarder):
+        # called when attached to a node/configuration
+        # message_forwarder is a function which sends a message to the node or configuration
+        pass
+
+    @abstractmethod
+    def close(self):
+        # called when detached from a node/configuration
+        pass
+
+    @abstractmethod
+    def send_message_from_client(self, *msg):
+        # send a message to the node/configuration
+        pass
+
+    @abstractmethod
+    def send_message_to_client(self, *msg):
+        # send a message to the node/configuration
+        pass
+
+    @abstractmethod
+    def set_to_client_message_handler(self, message_handler):
+        # set a message handler for messages sent from the node or configuration to the client
+        pass
+
+    @abstractmethod
+    def set_from_client_message_handler(self, message_handler):
+        # set a message handler for messages sent to the node or configuration from the client
+        pass
+
 
 

@@ -104,6 +104,9 @@ class NodeWrapper(Wrapper):
     def get_configuration(self):
         return self.configuration
 
+    def get_connected_node_instances(self, port_name, is_input_port):
+        return self.executor.get_connected_node_instances(self.node_id, port_name, is_input_port)
+
 
 
 

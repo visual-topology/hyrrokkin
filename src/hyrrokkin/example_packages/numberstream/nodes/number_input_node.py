@@ -23,8 +23,8 @@ class NumberInputNode:
     def __init__(self, services):
         self.services = services
 
-    def open_client(self,client_id, client_options, send_fn):
-        return lambda *msg: self.__handle_message(client_id, *msg)
+    def open_client(self,client_id, client_options, client_service):
+        client_service.set_message_handler(lambda *msg: self.__handle_message(client_id, *msg))
 
     def __handle_message(self,client_id,*msg):
         new_value = msg[0]
