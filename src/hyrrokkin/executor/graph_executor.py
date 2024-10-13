@@ -249,9 +249,9 @@ class GraphExecutor:
             self.status_callback(target_id, target_type, message, status)
         return False
 
-    def node_execution_update(self, node_id, node_execution_state, exn_or_result):
+    def node_execution_update(self, node_id, node_execution_state, exn_or_result, is_manual):
         if self.node_execution_callback:
-            self.node_execution_callback(node_id, node_execution_state, exn_or_result)
+            self.node_execution_callback(node_id, node_execution_state, exn_or_result, is_manual)
         return False
 
     def set_execution_complete_callback(self, execution_complete_callback):
@@ -262,8 +262,12 @@ class GraphExecutor:
             self.execution_complete_callback()
         return self.stop_on_execution_complete
 
-    def get_connected_node_instances(self, node_id, port_name, is_input_port):
-        return self.et.get_connected_node_instances(node_id, port_name, is_input_port)
+    def fire_output_port_event(self, node_id, output_port_name, event_type, event_value):
+        connected_node_ports = self.et.get_connected_node_instances(node_id, output_port_name, False)
+        for connected_node_port in connected_node_ports:
+            node = connected_node_port[0]
+            input_port_name = connected_node_port[1]
+            node.handle_input_port_event(input_port_name, event_value, event_value)
 
 
 

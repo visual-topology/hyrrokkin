@@ -35,7 +35,6 @@ class NumberDisplayNode:
             s = json.dumps(values[0])
             self.services.set_status_info(s)
             for client_service in self.clients.values():
-                print("sending: "+str(values[0]))
                 client_service.send_message(values[0])
 
         return None

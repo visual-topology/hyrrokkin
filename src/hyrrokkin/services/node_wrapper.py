@@ -63,6 +63,7 @@ class NodeWrapper(Wrapper):
             self.logger.exception(f"Error in reset_execution for node {self.node_id}")
 
     async def execute(self, inputs):
+        # note - any exceptions raised in the node instance's run method will be caught by the caller
         if hasattr(self.instance, "run"):
             if inspect.iscoroutinefunction(self.instance.run):
                 return await self.instance.run(inputs)
@@ -73,6 +74,9 @@ class NodeWrapper(Wrapper):
 
     def set_status(self, state, status_message):
         self.executor.notify(lambda executor: executor.status_update(self.node_id, "node", status_message, state))
+
+    def set_execution_state(self, execution_state):
+        self.executor.notify(lambda executor: executor.set_execution_state(self.node_id, execution_state))
 
     def request_execution(self):
         self.executor.request_node_execution(self.node_id)
@@ -104,8 +108,15 @@ class NodeWrapper(Wrapper):
     def get_configuration(self):
         return self.configuration
 
-    def get_connected_node_instances(self, port_name, is_input_port):
-        return self.executor.get_connected_node_instances(self.node_id, port_name, is_input_port)
+    def fire_output_port_event(self, output_port_name, event_type, event_value):
+        return self.executor.fire_output_port_event(self.node_id, output_port_name, event_type, event_value)
+
+    def handle_input_port_event(self, input_port_name, event_type, event_value):
+        try:
+            if hasattr(self.instance, "handle_input_port_event"):
+                self.instance.handle_input_port_event(input_port_name, event_type, event_value)
+        except:
+            self.logger.exception(f"Error in handle_input_port_event for node {self.node_id}")
 
 
 

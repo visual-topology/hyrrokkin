@@ -535,9 +535,9 @@ class ExecutionThread(threading.Thread):
         if self.graph_executor.status_callback:
             self.executor_queue.put(lambda graph_executor: graph_executor.status_update(node_id, message, state))
 
-    def set_node_execution_state(self, node_id, execution_state, exn_or_result=None):
+    def set_node_execution_state(self, node_id, execution_state, exn_or_result=None, is_manual=False):
         if self.graph_executor.node_execution_callback:
-            self.executor_queue.put(lambda graph_executor: graph_executor.node_execution_update(node_id, execution_state, exn_or_result))
+            self.executor_queue.put(lambda graph_executor: graph_executor.node_execution_update(node_id, execution_state, exn_or_result, is_manual))
 
     def send_node_message(self, node_id, client_id, *msg):
         self.executor_queue.put(lambda graph_executor: graph_executor.message_update(node_id, client_id, *msg))
@@ -576,12 +576,9 @@ class ExecutionThread(threading.Thread):
     def get_connected_node_instances(self, node_id, port_name, is_input_port):
         node_ports = self.network.get_inputs_to(node_id,port_name) if is_input_port else self.network.get_outputs_from(node_id,port_name)
         connected_instances = []
-        for (node_id, _) in node_ports:
+        for (node_id, port_name) in node_ports:
             wrapper = self.node_wrappers.get(node_id,None)
-            if wrapper:
-                instance = wrapper.get_instance()
-                if instance:
-                    connected_instances.append(instance)
+            connected_instances.append([wrapper,port_name])
         return connected_instances
 
 

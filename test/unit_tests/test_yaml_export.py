@@ -32,8 +32,7 @@ test_yaml = """
 metadata:
   name: test topology
 configuration:
-  numberstream:
-    key1: value1
+  numberstream: {}
 nodes:
   n0:
     type: numberstream:integer_value_node
@@ -59,10 +58,11 @@ class YamlImportTests(unittest.TestCase):
     def test1(self):
         t = Topology(tempfile.mkdtemp(),[numberstream_package])
         t.set_metadata({"name":"test topology"})
-        t.set_package_property("numberstream","key1","value1")
+
         t.add_node("n0", "numberstream:integer_value_node", {"value": 99})
         t.add_node("n1", "numberstream:find_prime_factors_node", {})
         t.add_node("n2", "numberstream:integerlist_display_node", {})
+
         t.add_link("l0", "n0", "data_out", "n1", "data_in")
         t.add_link("l1", "n1", "data_out", "n2", "data_in")
 
@@ -70,6 +70,7 @@ class YamlImportTests(unittest.TestCase):
             with open(yamlf.name,"w") as of:
                 export_to_yaml(t, of)
             with open(yamlf.name) as f:
-                self.assertEqual(test_yaml.strip(),f.read().strip())
+                actual = f.read().strip()
+                self.assertEqual(test_yaml.strip(),actual)
 
 

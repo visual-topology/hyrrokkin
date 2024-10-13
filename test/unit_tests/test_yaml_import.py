@@ -31,14 +31,15 @@ numberstream_package = "hyrrokkin.example_packages.numberstream"
 test_yaml = """
 nodes:
   n0:
-    type: numberstream:number_producer
+    type: numberstream:integer_value_node
     properties:
       value: 200
   n1:
-    type: numberstream:number_aggregator
+    type: numberstream:find_prime_factors_node
+    properties: {}
     
-links:
-  - n0 => n1  
+links: 
+  - n0 => n1
 """
 
 class YamlImportTests(unittest.TestCase):
@@ -55,6 +56,7 @@ class YamlImportTests(unittest.TestCase):
             with open(yamlf.name) as f:
                 import_from_yaml(t,f)
 
-        self.assertTrue(t.run())
+        test_outputs = []
+        self.assertTrue(t.run(output_listeners={"n1:data_out": lambda v: test_outputs.append(v)}))
 
-        self.assertEqual({"data_out":200},t.get_node_outputs("n0"))
+        self.assertEqual(test_outputs,[[2, 2, 2, 5, 5]])

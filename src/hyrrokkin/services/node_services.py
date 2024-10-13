@@ -74,9 +74,22 @@ class NodeServices:
         """
         self.wrapper.set_status(StatusStates.clear.value, "")
 
+    def set_execution_state(self, execution_state:str):
+        """
+        Manually set the execution state of the node
+
+        Args:
+            execution_state: one of "pending", "executing", "executed", "failed"
+
+        Notes:
+            Normally this is tracked by hyrrokkin.  After making this call, the execution state will be
+            tracked manually for the node involved.
+        """
+        self.wrapper.set_execution_state(execution_state)
+
     def request_run(self):
         """
-        Request that this node be executed
+        Request that this node be run
         """
         self.wrapper.request_execution()
 
@@ -137,18 +150,18 @@ class NodeServices:
         """
         return self.wrapper.get_configuration().get_instance()
 
-    def get_connected_nodes(self, port_name:str, is_input_port: bool) -> list[object]:
+    def fire_output_port_event(self, output_port_name:str, event_type:str, event_value:object=None):
         """
-        Get a list of nodes that are connected to an input or output port
+        Send an event from an output port to all nodes connected to that output port
 
         Args:
-            port_name: the name of the port
-            is_input_port: whether the named port is an input or output port
-
-        Returns:
-            a list of node instances that are connected to this node via the specified port
+            output_port_name: the name of the output port
+            event_type: the type of event to fire
+            event_value: an optional value associated with the event
         """
-        return self.wrapper.get_connected_node_instances(port_name, is_input_port)
+        return self.wrapper.fire_output_port_event(output_port_name, event_type, event_value)
+
+
 
 
     

@@ -37,7 +37,7 @@ class Topology:
 
     def __init__(self, execution_folder:str, package_list: list[str],
                  status_handler: Callable[[str, str, str, str], None] = None,
-                 execution_handler: Callable[[str, str, Union[Dict, Exception, None]], None] = None):
+                 execution_handler: Callable[[str, str, Union[Dict, Exception, None], bool], None] = None):
         """
         Create a topology
 
@@ -47,7 +47,7 @@ class Topology:
             status_handler: specify a function to call when a node/configuration sets its status
                                  passing parameters target_id, target_type, msg, status
             execution_handler: specify a function to call when a node changes its execution status
-                                passing parameters lambda node_id, state, exception_or_result
+                                passing parameters lambda node_id, state, exception_or_result, is_manual
         """
         self.execution_folder = execution_folder
         os.makedirs(self.execution_folder, exist_ok=True)
@@ -158,7 +158,7 @@ class Topology:
             node_type: the type of the node, a string of the form package_id:node_type_id
             properties: dictionary containing the node's property names and values, must be JSON serialisable
         """
-        if self.executor.get_link(node_id) is not None:
+        if self.executor.get_node(node_id) is not None:
             raise InvalidNodeError(f"Node with id {node_id} already exists")
 
         self.dsu.set_node_properties(node_id, properties)
@@ -166,6 +166,17 @@ class Topology:
         self.executor.add_node(node)
         self.empty = False
         return node_id
+
+    def remove_node(self, node_id: str):
+        """
+        Remove a node from the topology
+
+        Args:
+            node_id: the node's unique identifier
+        """
+        if self.executor.get_node(node_id) is None:
+            raise InvalidNodeError(f"Node with id {node_id} does not exist")
+        self.executor.remove_node(node_id)
 
     def update_node_position(self, node_id, x, y):
         """
@@ -346,6 +357,17 @@ class Topology:
 
         link = Link(link_id, from_node_id, from_port, to_node_id, to_port, from_link_type)
         self.executor.add_link(link)
+
+    def remove_link(self, link_id: str):
+        """
+        Remove a link from the topology
+
+        Args:
+            link_id: the link's unique identifier
+        """
+        if self.executor.get_link(link_id) is None:
+            raise InvalidNodeError(f"Link with id {link_id} does not exist")
+        self.executor.remove_link(link_id)
 
     def get_node_ids(self) -> list[str]:
         """

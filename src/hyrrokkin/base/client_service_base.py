@@ -18,38 +18,69 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from abc import abstractmethod
+from typing import Any, Callable
 
 class ClientServiceBase:
 
     @abstractmethod
-    def open(self, message_forwarder):
-        # called when attached to a node/configuration
-        # message_forwarder is a function which sends a message to the node or configuration
+    def __init__(self):
+        """
+        Creates an instance of an object used to communicate between a node or configuration
+        instance and one of its clients.  The object should implement all of the methods defined
+        in this abstract base class.  One instance will be passed to the client and one to the node or configuration.
+        """
+        pass
+
+    @abstractmethod
+    def open(self, message_forwarder: Callable[...,None] ):
+        """
+        Ater construction, this method will be called to attach a function that will forward a message to the peer
+        client service object
+
+        Args:
+            message_forwarder: a function that can be called with a message consisting of one or more arguments
+        """
+        pass
+
+    @abstractmethod
+    def send_message(self, *msg:Any):
+        """
+        Send a message to the peer client-services object
+
+        Args:
+            *msg: a message consisting of one or more arguments
+        """
+        pass
+
+    @abstractmethod
+    def set_message_handler(self, message_handler: Callable[...,None]):
+        """
+        Set up a handler function to be called when a message is received from the
+        peer client service object
+
+        Note, any messages received by this client service instance before a message handler
+        is set up should be queued and not lost.  The implementation should support this.
+
+        Args:
+            message_handler: a function that will consume a message consisting of one or more arguments
+        """
+        pass
+
+    @abstractmethod
+    def handle_message(self, *message:Any):
+        """
+        Called by hyrrokkin to pass a message received from the remote client service object
+
+        Args:
+            *message: a message consisting of one or more arguments
+        """
         pass
 
     @abstractmethod
     def close(self):
-        # called when detached from a node/configuration
-        pass
-
-    @abstractmethod
-    def send_message_from_client(self, *msg):
-        # send a message to the node/configuration
-        pass
-
-    @abstractmethod
-    def send_message_to_client(self, *msg):
-        # send a message to the node/configuration
-        pass
-
-    @abstractmethod
-    def set_to_client_message_handler(self, message_handler):
-        # set a message handler for messages sent from the node or configuration to the client
-        pass
-
-    @abstractmethod
-    def set_from_client_message_handler(self, message_handler):
-        # set a message handler for messages sent to the node or configuration from the client
+        """
+        Called by hyrrokkin when the client service link is shut down.  Free all resources.
+        """
         pass
 
 
