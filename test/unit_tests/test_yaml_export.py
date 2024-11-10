@@ -26,33 +26,27 @@ from hyrrokkin.utils.yaml_exporter import export_to_yaml
 
 logging.basicConfig(level=logging.INFO)
 
-numberstream_package = "hyrrokkin_example_packages.numberstream"
+numberstream_package = "hyrrokkin.example_packages.numberstream"
 
 test_yaml = """
 metadata:
   name: test topology
 configuration:
-  numberstream:
-    key1: value1
+  numberstream: {}
 nodes:
   n0:
-    type: numberstream:number_producer
+    type: numberstream:number_input_node
     properties:
       value: 99
   n1:
-    type: numberstream:number_transformer
-    properties:
-      fn: 'lambda x: x*2'
-  n2:
-    type: numberstream:number_aggregator
+    type: numberstream:prime_factors_node
     properties: {}
-  n3:
-    type: numberstream:number_display
+  n2:
+    type: numberstream:number_display_node
     properties: {}
 links:
 - n0 => n1
-- n1 => n2
-- n2 => n3
+- n1 => n2:integerlist_data_in
 """
 
 
@@ -64,19 +58,19 @@ class YamlImportTests(unittest.TestCase):
     def test1(self):
         t = Topology(tempfile.mkdtemp(),[numberstream_package])
         t.set_metadata({"name":"test topology"})
-        t.set_package_property("numberstream","key1","value1")
-        t.add_node("n0", "numberstream:number_producer", {"value": 99})
-        t.add_node("n1", "numberstream:number_transformer", {"fn": "lambda x: x*2"})
-        t.add_node("n2", "numberstream:number_aggregator", {})
-        t.add_node("n3", "numberstream:number_display", {})
+
+        t.add_node("n0", "numberstream:number_input_node", {"value": 99})
+        t.add_node("n1", "numberstream:prime_factors_node", {})
+        t.add_node("n2", "numberstream:number_display_node", {})
+
         t.add_link("l0", "n0", "data_out", "n1", "data_in")
-        t.add_link("l1", "n1", "data_out", "n2", "data_in")
-        t.add_link("l2", "n2", "data_out", "n3", "data_in")
+        t.add_link("l1", "n1", "data_out", "n2", "integerlist_data_in")
 
         with tempfile.NamedTemporaryFile(suffix=".yaml", delete=True) as yamlf:
             with open(yamlf.name,"w") as of:
                 export_to_yaml(t, of)
             with open(yamlf.name) as f:
-                self.assertEqual(test_yaml.strip(),f.read().strip())
+                actual = f.read().strip()
+                self.assertEqual(test_yaml.strip(),actual)
 
 

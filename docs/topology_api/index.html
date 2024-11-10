@@ -1,0 +1,3371 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Topology api - hyrrokkin documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Topology api";
+        var mkdocs_page_input_path = "topology_api.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> hyrrokkin documentation
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Welcome to the Hyrrokkin documentation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration_api/">Configuration api</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration_service_api/">Configuration service api</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../node_api/">Node api</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../node_service_api/">Node service api</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Topology api</a>
+    <ul class="current">
+    </ul>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">hyrrokkin documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Topology api</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h2 id="creating-loading-and-running-topologies">Creating, loading and running topologies</h2>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="hyrrokkin.api.topology"></a>
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="hyrrokkin.api.topology.Topology" class="doc doc-heading">
+            <code>Topology</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+                <pre class="highlight"><code class="language-python">class Topology:
+
+    def __init__(self, execution_folder:str, package_list: list[str],
+                 status_handler: Callable[[str, str, str, str], None] = None,
+                 execution_handler: Callable[[Union[float,None], str, str, Union[Dict, Exception, None], bool], None] = None):
+        """
+        Create a topology
+
+        Args:
+            execution_folder: the folder used to store the topology definition and files
+            package_list: a list of the paths to python packages containing schemas (a schema.json
+            status_handler: specify a function to call when a node/configuration sets its status
+                                 passing parameters target_id, target_type, msg, status
+            execution_handler: specify a function to call when a node changes its execution status
+                                passing parameters timestamp, node_id, state, exception, is_manual
+        """
+        self.execution_folder = execution_folder
+        os.makedirs(self.execution_folder, exist_ok=True)
+        self.dsu = DataStoreUtils(self.execution_folder)
+        self.schema = Schema()
+        for package in package_list:
+            self.schema.load_package_from(package + "/schema.json")
+        self.status_handler = status_handler
+        self.execution_handler = execution_handler
+
+        self.network = Network(self.schema, self.execution_folder)
+        self.executor = GraphExecutor(self.network, self.schema, execution_folder=self.execution_folder,
+                                      status_callback=self.status_handler,
+                                      node_execution_callback=self.execution_handler)
+        # the empty flag indicates that the topology contains no nodes and no
+        # package properties or package data has been assigned
+        self.empty = True
+
+    def load_zip(self, from_file: io.BytesIO) -&gt; dict:
+        """
+        Load a topology from a binary stream
+
+        Args:
+            from_file: a binary stream, opened for reading
+
+        Returns:
+            a dictionary containing any node renamings performed to avoid id collisions with existing nodes
+        """
+        (added_node_ids, added_link_ids, node_renamings) = self.network.load_zip(from_file, merging=not self.empty)
+        for node_id in added_node_ids:
+            node = self.network.get_node(node_id)
+            self.executor.add_node(node)
+        for link_id in added_link_ids:
+            link = self.network.get_link(link_id)
+            self.executor.add_link(link)
+        self.empty = False
+        return node_renamings
+
+    def load_dir(self):
+        """
+        Load a topology from the execution folder
+        """
+        (added_node_ids, added_link_ids, node_renamings) = self.network.load_dir({})
+        for node_id in added_node_ids:
+            node = self.network.get_node(node_id)
+            self.executor.add_node(node)
+        for link_id in added_link_ids:
+            link = self.network.get_link(link_id)
+            self.executor.add_link(link)
+        self.empty = False
+
+    def save_zip(self, to_file: io.BufferedWriter=None) -&gt;Union[None,bytes]:
+        """
+        Save a topology to a binary stream
+
+        Args:
+            to_file: an opened binary file to which the topology will be saved, if provided
+
+        Returns:
+            if to_file is not provided, returns a bytes object containing the saved topology
+        """
+        return self.network.save_zip(to_file)
+
+    def run(self, inject_input_values:Dict[str,Any]={}, output_listeners:Dict[str,Callable[[Any],None]]={}) -&gt; bool:
+        """
+        Run the topology, blocking until the execution of all nodes completes
+
+        Args:
+            inject_input_values: a mapping from an input port described by node_id:port to an extra value to present at that port during execution
+            output_listeners: a mapping from an output port described by node_id:port to a listener that is invoked with values that are output at that port
+        Returns:
+            True if the execution succeeded, false if it failed due to some error
+        """
+        for (node_port,value) in inject_input_values.items():
+            (node_id,port) = tuple(node_port.split(":"))
+            self.executor.inject_input((node_id,port),value)
+
+        for (node_port,value_listener) in output_listeners.items():
+            (node_id, port) = tuple(node_port.split(":"))
+            self.executor.add_output_listener((node_id,port),value_listener)
+
+        return self.executor.run(terminate_on_complete=True)
+
+    def create_interactive_session(self, client_service_classes:tuple[str,str]=("hyrrokkin.services.client_service.ClientService","hyrrokkin.services.client_service.ClientService")) -&gt; TopologyInteractor:
+        """
+        Run the topology interactively
+
+        Returns: a TopologyInteractor instance that allows the execution to be stopped and clients to be attached and detached
+        """
+        return TopologyInteractor(self.executor, client_service_classes)
+
+    def set_metadata(self, metadata: dict[str, str]):
+        """
+        Set metadata for this topology
+
+        Args:
+            metadata: a dictionary containing metadata, consisting of string keys and values.
+
+        Notes:
+            the following keys will be understood by hyrrokkin based tools - version, description, authors
+        """
+        self.network.set_metadata(metadata)
+
+    def set_configuration(self, package_id: str, properties: dict):
+        """
+        Set the properties of a package's configuration
+
+        Args:
+            package_id: the id of the packahe
+            properties: a dictionary containing the configuration properties, must be JSON serialisable.
+        """
+        self.dsu.set_package_properties(package_id, properties)
+        self.empty = False
+
+
+
+
+    def add_node(self, node_id: str, node_type: str, properties: dict[str, JsonType]={},
+                 metadata:dict[str, JsonType]={}, x:int=0, y:int=0) -&gt; str:
+        """
+        Add a node to the topology
+
+        Args:
+            node_id: the node's unique identifier, must not already exist within the topology
+            node_type: the type of the node, a string of the form package_id:node_type_id
+            properties: dictionary containing the node's property names and values, must be JSON serialisable
+            metadata: a dictionary containing the new metadata
+            x: the new x-coordinate value
+            y: the new y-coordinate value
+        """
+        if self.network.get_node(node_id) is not None:
+            raise InvalidNodeError(f"Node with id {node_id} already exists")
+
+        self.dsu.set_node_properties(node_id, properties)
+        node = Node(node_id, node_type, x=x, y=y, metadata=metadata)
+        self.network.add_node(node)
+        self.executor.add_node(node)
+        self.empty = False
+        return node_id
+
+    def remove_node(self, node_id: str):
+        """
+        Remove a node from the topology
+
+        Args:
+            node_id: the node's unique identifier
+        """
+        if self.network.get_node(node_id) is None:
+            raise InvalidNodeError(f"Node with id {node_id} does not exist")
+        self.network.remove_node(node_id)
+        self.executor.remove_node(node_id)
+
+    def update_node_position(self, node_id:str, x:int, y:int):
+        """
+        Update a node's position
+
+        Args:
+            node_id: the id of the node to update
+            x: the new x-coordinate value
+            y: the new y-coordinate value
+        """
+        self.network.move_node(node_id, x, y)
+
+    def get_node_property(self, node_id: str, property_name: str) -&gt; JsonType:
+        """
+        Gets the property of a node, or None if the node's property is not set
+
+        Args:
+            node_id: the node's identifier
+            property_name: the name of the property
+        """
+
+        return self.dsu.get_node_property(node_id, property_name)
+
+    def set_node_property(self, node_id: str, property_name: str, property_value: JsonType):
+        """
+        Update the property of a node
+
+        Args:
+            node_id: the node's identifier
+            property_name: the name of the property
+            property_value: the value of the property, must be JSON serialisable
+        """
+        self.dsu.set_node_property(node_id, property_name, property_value)
+
+    def get_node_data(self, node_id: str, key: str) -&gt; Union[bytes, str, None]:
+        """
+        Get binary or string data associated with this node.
+
+        Args:
+            node_id: node identifier
+            key: a key to locate the data (can only contain alphanumeric characters and underscores)
+
+        Returns:
+            data or None if no data is associated with the key
+        """
+        return self.dsu.get_node_data(node_id, key)
+
+    def set_node_data(self, node_id: str, key: str, data: Union[bytes, str, None]):
+        """
+        Set binary or string data associated with this node.
+
+        Args:
+            node_id: node identifier
+            key: a key to locate the data (can only contain alphanumeric characters and underscores)
+            data: data to be stored
+        """
+        self.dsu.set_node_data(node_id, key, data)
+
+    def get_package_property(self, package_id: str, property_name: str) -&gt; JsonType:
+        """
+        Gets the property of a package, or None if the package or package property is not set
+
+        Args:
+            package_id: the package's identifier
+            property_name: the name of the property
+
+        Returns:
+            property value or None if no such property exists
+        """
+        return self.dsu.get_package_property(package_id, property_name)
+
+    def set_package_property(self, package_id: str, property_name: str, property_value: JsonType):
+        """
+        Update the property of a package
+
+        Args:
+            package_id: the packae's identifier
+            property_name: the name of the property
+            property_value: the value of the property, must be JSON serialisable
+        """
+        self.dsu.set_package_property(package_id, property_name, property_value)
+        self.empty = False
+
+    def get_package_data(self, package_id: str, key: str) -&gt; Union[bytes, str, None]:
+        """
+        Get binary or string data associated with a package configuration.
+
+        Args:
+            package_id: package identifier
+            key: a key to locate the data (can only contain alphanumeric characters and underscores)
+
+        Returns:
+            data or None if no data is associated with the key
+        """
+        return self.dsu.get_package_data(package_id, key)
+
+    def set_package_data(self, package_id: str, key: str, data: Union[bytes, str, None]):
+        """
+        Set binary or string data associated with this node.
+
+        Args:
+            package_id: package identifier
+            key: a key to locate the data (can only contain alphanumeric characters and underscores)
+            data: data to be stored
+        """
+        self.dsu.set_package_data(package_id, key, data)
+        self.empty = False
+
+    def add_link(self, link_id: str, from_node_id: str, from_port: Union[str, None], to_node_id: str,
+                 to_port: Union[str, None]) -&gt; str:
+        """
+        Add a link to the topology
+
+        Args:
+            link_id: a unique identifier for the link
+            from_node_id: node id of the source node
+            from_port: port name on the source node, can be omitted if the "from" node has only one output port
+            to_node_id: node id of the destination node
+            to_port: port name on the destination node, can be ommitted if the "to" node has only one input port
+
+        Raises:
+            InvalidLinkError: if the link cannot be added
+        """
+
+        if self.network.get_link(link_id) is not None:
+            raise InvalidLinkError(f"Link with id {link_id} already exists")
+
+        from_node = self.network.get_node(from_node_id)
+        if from_node is None:
+            raise InvalidLinkError(f"{from_node_id} does not exist")
+
+        from_node_type_name = from_node.get_node_type()
+        from_node_type = self.schema.get_node_type(from_node_type_name)
+
+        to_node = self.network.get_node(to_node_id)
+        if to_node is None:
+            raise InvalidLinkError(f"{to_node_id} does not exist")
+        to_node_type_name = to_node.get_node_type()
+        to_node_type = self.schema.get_node_type(to_node_type_name)
+
+        if from_port is None:
+            if len(from_node_type.output_ports) == 1:
+                from_port = next(iter(from_node_type.output_ports))
+            else:
+                output_port_names = ",".join(list(from_node_type.output_ports.keys()))
+                raise InvalidLinkError(f"from_port not specified for link, should be one of ({output_port_names})")
+        else:
+            if from_port not in from_node_type.output_ports:
+                raise InvalidLinkError(f"{from_port} is not a valid output port for node {from_node_id}")
+
+        if to_port is None:
+            if len(to_node_type.input_ports) == 1:
+                to_port = next(iter(to_node_type.input_ports))
+            else:
+                input_port_names = ",".join(list(to_node_type.input_ports.keys()))
+                raise InvalidLinkError(f"to_port not specified for link, should be one of ({input_port_names})")
+        else:
+            if to_port not in to_node_type.input_ports:
+                raise InvalidLinkError(f"{to_port} is not a valid output port for node {to_node_id}")
+
+        from_link_type = from_node_type.output_ports[from_port].link_type
+
+        to_link_type = to_node_type.input_ports[to_port].link_type
+
+        if from_link_type != to_link_type:
+            raise InvalidLinkError(f"incompatible link types (from: {from_link_type}, to: {to_link_type})")
+
+        if not from_node_type.output_ports[from_port].allows_multiple_connections():
+            if len(self.network.get_outputs_from(from_node_id, from_port)) &gt; 0:
+                raise InvalidLinkError(
+                    f"output port {from_node_id}/{from_port} is already connected and does not allow multiple connections")
+
+        if not to_node_type.input_ports[to_port].allows_multiple_connections():
+            if len(self.network.get_inputs_to(to_node_id, to_port)) &gt; 0:
+                raise InvalidLinkError(
+                    f"input port {to_node_id}/{to_port} is already connected and does not allow multiple connections")
+
+        link = Link(link_id, from_node_id, from_port, to_node_id, to_port, from_link_type)
+        self.network.add_link(link)
+        self.executor.add_link(link)
+
+    def remove_link(self, link_id: str):
+        """
+        Remove a link from the topology
+
+        Args:
+            link_id: the link's unique identifier
+        """
+        if self.network.get_link(link_id) is None:
+            raise InvalidNodeError(f"Link with id {link_id} does not exist")
+        else:
+            self.network.remove_link(link_id)
+            self.executor.remove_link(link_id)
+
+    def get_node_ids(self) -&gt; list[str]:
+        """
+        Get the ids of all nodes in the topology
+
+        Returns:
+            list of node ids
+        """
+        return self.network.get_node_ids()
+
+    def get_node_type(self, node_id: str) -&gt; tuple[str, str]:
+        """
+        Get the node package and type for a given node
+
+        Args:
+            node_id: the id of the node to retrieve
+
+        Returns:
+            tuple (package_id, node_type_id)
+        """
+        node = self.network.get_node(node_id)
+        node_type = node.get_node_type()
+        return self.schema.split_descriptor(node_type)
+
+    def serialise_node(self, node_id:str) -&gt; dict[str, JsonType]:
+        """
+        Serialise a node to a dictionary
+
+        Args:
+            node_id: the id of the node to serialise
+
+        Returns:
+            a dictionary describing the node
+        """
+        node = self.network.get_node(node_id)
+        d = {}
+        d["node_id"] = node_id
+        d["node_type"] = node.get_node_type()
+        (x, y) = node.get_xy()
+        d["x"] = x
+        d["y"] = y
+        d["metadata"] = node.get_metadata()
+        return d
+
+    def serialise_link(self, link_id:str) -&gt; dict[str, JsonType]:
+        """
+        Serialise a link to a dictionary
+
+        Args:
+            link_id: the id of the link to serialise
+
+        Returns:
+            a dictionary describing the link
+        """
+        link = self.network.get_link(link_id)
+        msg = {}
+        msg["link_id"] = link_id
+        msg["link_type"] = link.get_link_type()
+        msg["from_node"] = link.from_node_id
+        msg["from_port"] = link.from_port
+        msg["to_node"] = link.to_node_id
+        msg["to_port"] = link.to_port
+        return msg
+
+    def serialise(self) -&gt; dict[str,JsonType]:
+        """
+        Serialise the topology to a dictionary without data/properties
+
+        Returns:
+            a dictionary describing the topoology
+        """
+
+        return self.network.save()
+
+    def get_node_metadata(self, node_id: str) -&gt; dict[str, JsonType]:
+        """
+        Get the metadata of a node
+
+        Args:
+            node_id: the id of the node
+
+        Returns:
+            A dictionary containing the metadata
+        """
+        return self.network.get_node(node_id).get_metadata()
+
+    def update_node_metadata(self, node_id:str, metadata:dict[str,JsonType]):
+        """
+        Updates the metadata of a node
+
+        Args:
+            node_id: the id of the node
+            metadata: a dictionary containing the new metadata
+        """
+        node = self.network.get_node(node_id)
+        node.update_metadata(metadata)
+
+    def get_link_ids(self) -&gt; list[str]:
+        """
+        Get the ids of all links in the topology
+
+        Returns:
+            list of link ids
+        """
+        return self.network.get_link_ids()
+
+    def get_link(self, link_id:str) -&gt; tuple[str, str, str, str]:
+        """
+        Get the link details for a given link
+
+        Args:
+            link_id: the id of the link to retrieve
+
+        Returns:
+            tuple (from_node_id,from_port,to_node_id,to_port)
+        """
+        link = self.network.get_link(link_id)
+        return (link.from_node_id, link.from_port, link.to_node_id, link.to_port)
+
+    def get_output_port_names(self, node_id: str) -&gt; list[str]:
+        """
+        Get the output port names for a given node
+
+        Args:
+            node_id: the id of the node
+
+        Returns:
+            list of output port names
+        """
+        node = self.network.get_node(node_id)
+        node_type = self.schema.get_node_type(node.get_node_type())
+        return [name for (name, _) in node_type.get_output_ports()]
+
+    def get_input_port_names(self, node_id: str) -&gt; list[str]:
+        """
+        Get the input port names for a given node
+
+        Args:
+            node_id: the id of the node
+
+        Returns:
+            list of input port names
+        """
+        node = self.network.get_node(node_id)
+        node_type = self.schema.get_node_type(node.get_node_type())
+        return [name for (name, _) in node_type.get_input_ports()]
+
+    def get_metadata(self) -&gt; dict[str, JsonType]:
+        """
+        Get the metadata of the topology
+
+        Returns:
+            A dictionary containing the metadata
+        """
+        return self.network.get_metadata()
+
+    def get_node_properties(self, node_id: str) -&gt; dict[str, JsonType]:
+        """
+        Get the properties for the specified node
+
+        Args:
+            node_id: the node identifier
+
+        Returns:
+            A dictionary containing the properties defined for that node
+        """
+        return self.dsu.get_node_properties(node_id)
+
+    def get_package_properties(self, package_id: str) -&gt; dict[str, JsonType]:
+        """
+        Get the properties for the specified package
+
+        Args:
+            package_id: the package identifier
+
+        Returns:
+            A dictionary containing the properties defined for that package
+        """
+        return self.dsu.get_package_properties(package_id)
+
+    def clear(self):
+        """
+        Remove all nodes and links from the topology
+        """
+        self.network.clear()
+        self.executor.clear()</code></pre>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.__init__" class="doc doc-heading">
+            <code class="highlight language-python">__init__(execution_folder, package_list, status_handler=None, execution_handler=None)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Create a topology</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>execution_folder</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the folder used to store the topology definition and files</p>
+              </div>
+            </li>
+            <li>
+              <b><code>package_list</code></b>
+                  (<code>list[str]</code>)
+              –
+              <div class="doc-md-description">
+                <p>a list of the paths to python packages containing schemas (a schema.json</p>
+              </div>
+            </li>
+            <li>
+              <b><code>status_handler</code></b>
+                  (<code><span title="typing.Callable">Callable</span>[[str, str, str, str], None]</code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>specify a function to call when a node/configuration sets its status
+                 passing parameters target_id, target_type, msg, status</p>
+              </div>
+            </li>
+            <li>
+              <b><code>execution_handler</code></b>
+                  (<code><span title="typing.Callable">Callable</span>[[<span title="typing.Union">Union</span>[float, None], str, str, <span title="typing.Union">Union</span>[<span title="typing.Dict">Dict</span>, Exception, None], bool], None]</code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>specify a function to call when a node changes its execution status
+                passing parameters timestamp, node_id, state, exception, is_manual</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def __init__(self, execution_folder:str, package_list: list[str],
+             status_handler: Callable[[str, str, str, str], None] = None,
+             execution_handler: Callable[[Union[float,None], str, str, Union[Dict, Exception, None], bool], None] = None):
+    """
+    Create a topology
+
+    Args:
+        execution_folder: the folder used to store the topology definition and files
+        package_list: a list of the paths to python packages containing schemas (a schema.json
+        status_handler: specify a function to call when a node/configuration sets its status
+                             passing parameters target_id, target_type, msg, status
+        execution_handler: specify a function to call when a node changes its execution status
+                            passing parameters timestamp, node_id, state, exception, is_manual
+    """
+    self.execution_folder = execution_folder
+    os.makedirs(self.execution_folder, exist_ok=True)
+    self.dsu = DataStoreUtils(self.execution_folder)
+    self.schema = Schema()
+    for package in package_list:
+        self.schema.load_package_from(package + "/schema.json")
+    self.status_handler = status_handler
+    self.execution_handler = execution_handler
+
+    self.network = Network(self.schema, self.execution_folder)
+    self.executor = GraphExecutor(self.network, self.schema, execution_folder=self.execution_folder,
+                                  status_callback=self.status_handler,
+                                  node_execution_callback=self.execution_handler)
+    # the empty flag indicates that the topology contains no nodes and no
+    # package properties or package data has been assigned
+    self.empty = True</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.add_link" class="doc doc-heading">
+            <code class="highlight language-python">add_link(link_id, from_node_id, from_port, to_node_id, to_port)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Add a link to the topology</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>link_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>a unique identifier for the link</p>
+              </div>
+            </li>
+            <li>
+              <b><code>from_node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>node id of the source node</p>
+              </div>
+            </li>
+            <li>
+              <b><code>from_port</code></b>
+                  (<code><span title="typing.Union">Union</span>[str, None]</code>)
+              –
+              <div class="doc-md-description">
+                <p>port name on the source node, can be omitted if the "from" node has only one output port</p>
+              </div>
+            </li>
+            <li>
+              <b><code>to_node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>node id of the destination node</p>
+              </div>
+            </li>
+            <li>
+              <b><code>to_port</code></b>
+                  (<code><span title="typing.Union">Union</span>[str, None]</code>)
+              –
+              <div class="doc-md-description">
+                <p>port name on the destination node, can be ommitted if the "to" node has only one input port</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Raises:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="hyrrokkin.exceptions.invalid_link_error.InvalidLinkError">InvalidLinkError</span></code>
+              –
+              <div class="doc-md-description">
+                <p>if the link cannot be added</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def add_link(self, link_id: str, from_node_id: str, from_port: Union[str, None], to_node_id: str,
+             to_port: Union[str, None]) -&gt; str:
+    """
+    Add a link to the topology
+
+    Args:
+        link_id: a unique identifier for the link
+        from_node_id: node id of the source node
+        from_port: port name on the source node, can be omitted if the "from" node has only one output port
+        to_node_id: node id of the destination node
+        to_port: port name on the destination node, can be ommitted if the "to" node has only one input port
+
+    Raises:
+        InvalidLinkError: if the link cannot be added
+    """
+
+    if self.network.get_link(link_id) is not None:
+        raise InvalidLinkError(f"Link with id {link_id} already exists")
+
+    from_node = self.network.get_node(from_node_id)
+    if from_node is None:
+        raise InvalidLinkError(f"{from_node_id} does not exist")
+
+    from_node_type_name = from_node.get_node_type()
+    from_node_type = self.schema.get_node_type(from_node_type_name)
+
+    to_node = self.network.get_node(to_node_id)
+    if to_node is None:
+        raise InvalidLinkError(f"{to_node_id} does not exist")
+    to_node_type_name = to_node.get_node_type()
+    to_node_type = self.schema.get_node_type(to_node_type_name)
+
+    if from_port is None:
+        if len(from_node_type.output_ports) == 1:
+            from_port = next(iter(from_node_type.output_ports))
+        else:
+            output_port_names = ",".join(list(from_node_type.output_ports.keys()))
+            raise InvalidLinkError(f"from_port not specified for link, should be one of ({output_port_names})")
+    else:
+        if from_port not in from_node_type.output_ports:
+            raise InvalidLinkError(f"{from_port} is not a valid output port for node {from_node_id}")
+
+    if to_port is None:
+        if len(to_node_type.input_ports) == 1:
+            to_port = next(iter(to_node_type.input_ports))
+        else:
+            input_port_names = ",".join(list(to_node_type.input_ports.keys()))
+            raise InvalidLinkError(f"to_port not specified for link, should be one of ({input_port_names})")
+    else:
+        if to_port not in to_node_type.input_ports:
+            raise InvalidLinkError(f"{to_port} is not a valid output port for node {to_node_id}")
+
+    from_link_type = from_node_type.output_ports[from_port].link_type
+
+    to_link_type = to_node_type.input_ports[to_port].link_type
+
+    if from_link_type != to_link_type:
+        raise InvalidLinkError(f"incompatible link types (from: {from_link_type}, to: {to_link_type})")
+
+    if not from_node_type.output_ports[from_port].allows_multiple_connections():
+        if len(self.network.get_outputs_from(from_node_id, from_port)) &gt; 0:
+            raise InvalidLinkError(
+                f"output port {from_node_id}/{from_port} is already connected and does not allow multiple connections")
+
+    if not to_node_type.input_ports[to_port].allows_multiple_connections():
+        if len(self.network.get_inputs_to(to_node_id, to_port)) &gt; 0:
+            raise InvalidLinkError(
+                f"input port {to_node_id}/{to_port} is already connected and does not allow multiple connections")
+
+    link = Link(link_id, from_node_id, from_port, to_node_id, to_port, from_link_type)
+    self.network.add_link(link)
+    self.executor.add_link(link)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.add_node" class="doc doc-heading">
+            <code class="highlight language-python">add_node(node_id, node_type, properties={}, metadata={}, x=0, y=0)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Add a node to the topology</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the node's unique identifier, must not already exist within the topology</p>
+              </div>
+            </li>
+            <li>
+              <b><code>node_type</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the type of the node, a string of the form package_id:node_type_id</p>
+              </div>
+            </li>
+            <li>
+              <b><code>properties</code></b>
+                  (<code>dict[str, <span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span>]</code>, default:
+                      <code>{}</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>dictionary containing the node's property names and values, must be JSON serialisable</p>
+              </div>
+            </li>
+            <li>
+              <b><code>metadata</code></b>
+                  (<code>dict[str, <span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span>]</code>, default:
+                      <code>{}</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>a dictionary containing the new metadata</p>
+              </div>
+            </li>
+            <li>
+              <b><code>x</code></b>
+                  (<code>int</code>, default:
+                      <code>0</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>the new x-coordinate value</p>
+              </div>
+            </li>
+            <li>
+              <b><code>y</code></b>
+                  (<code>int</code>, default:
+                      <code>0</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>the new y-coordinate value</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def add_node(self, node_id: str, node_type: str, properties: dict[str, JsonType]={},
+             metadata:dict[str, JsonType]={}, x:int=0, y:int=0) -&gt; str:
+    """
+    Add a node to the topology
+
+    Args:
+        node_id: the node's unique identifier, must not already exist within the topology
+        node_type: the type of the node, a string of the form package_id:node_type_id
+        properties: dictionary containing the node's property names and values, must be JSON serialisable
+        metadata: a dictionary containing the new metadata
+        x: the new x-coordinate value
+        y: the new y-coordinate value
+    """
+    if self.network.get_node(node_id) is not None:
+        raise InvalidNodeError(f"Node with id {node_id} already exists")
+
+    self.dsu.set_node_properties(node_id, properties)
+    node = Node(node_id, node_type, x=x, y=y, metadata=metadata)
+    self.network.add_node(node)
+    self.executor.add_node(node)
+    self.empty = False
+    return node_id</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.clear" class="doc doc-heading">
+            <code class="highlight language-python">clear()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Remove all nodes and links from the topology</p>
+
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def clear(self):
+    """
+    Remove all nodes and links from the topology
+    """
+    self.network.clear()
+    self.executor.clear()</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.create_interactive_session" class="doc doc-heading">
+            <code class="highlight language-python">create_interactive_session(client_service_classes=('hyrrokkin.services.client_service.ClientService', 'hyrrokkin.services.client_service.ClientService'))</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Run the topology interactively</p>
+<p>Returns: a TopologyInteractor instance that allows the execution to be stopped and clients to be attached and detached</p>
+
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def create_interactive_session(self, client_service_classes:tuple[str,str]=("hyrrokkin.services.client_service.ClientService","hyrrokkin.services.client_service.ClientService")) -&gt; TopologyInteractor:
+    """
+    Run the topology interactively
+
+    Returns: a TopologyInteractor instance that allows the execution to be stopped and clients to be attached and detached
+    """
+    return TopologyInteractor(self.executor, client_service_classes)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_input_port_names" class="doc doc-heading">
+            <code class="highlight language-python">get_input_port_names(node_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the input port names for a given node</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the id of the node</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>list[str]</code>
+              –
+              <div class="doc-md-description">
+                <p>list of input port names</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_input_port_names(self, node_id: str) -&gt; list[str]:
+    """
+    Get the input port names for a given node
+
+    Args:
+        node_id: the id of the node
+
+    Returns:
+        list of input port names
+    """
+    node = self.network.get_node(node_id)
+    node_type = self.schema.get_node_type(node.get_node_type())
+    return [name for (name, _) in node_type.get_input_ports()]</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_link" class="doc doc-heading">
+            <code class="highlight language-python">get_link(link_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the link details for a given link</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>link_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the id of the link to retrieve</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>tuple[str, str, str, str]</code>
+              –
+              <div class="doc-md-description">
+                <p>tuple (from_node_id,from_port,to_node_id,to_port)</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_link(self, link_id:str) -&gt; tuple[str, str, str, str]:
+    """
+    Get the link details for a given link
+
+    Args:
+        link_id: the id of the link to retrieve
+
+    Returns:
+        tuple (from_node_id,from_port,to_node_id,to_port)
+    """
+    link = self.network.get_link(link_id)
+    return (link.from_node_id, link.from_port, link.to_node_id, link.to_port)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_link_ids" class="doc doc-heading">
+            <code class="highlight language-python">get_link_ids()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the ids of all links in the topology</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>list[str]</code>
+              –
+              <div class="doc-md-description">
+                <p>list of link ids</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_link_ids(self) -&gt; list[str]:
+    """
+    Get the ids of all links in the topology
+
+    Returns:
+        list of link ids
+    """
+    return self.network.get_link_ids()</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_metadata" class="doc doc-heading">
+            <code class="highlight language-python">get_metadata()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the metadata of the topology</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>dict[str, <span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span>]</code>
+              –
+              <div class="doc-md-description">
+                <p>A dictionary containing the metadata</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_metadata(self) -&gt; dict[str, JsonType]:
+    """
+    Get the metadata of the topology
+
+    Returns:
+        A dictionary containing the metadata
+    """
+    return self.network.get_metadata()</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_node_data" class="doc doc-heading">
+            <code class="highlight language-python">get_node_data(node_id, key)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get binary or string data associated with this node.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>node identifier</p>
+              </div>
+            </li>
+            <li>
+              <b><code>key</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>a key to locate the data (can only contain alphanumeric characters and underscores)</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="typing.Union">Union</span>[bytes, str, None]</code>
+              –
+              <div class="doc-md-description">
+                <p>data or None if no data is associated with the key</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_node_data(self, node_id: str, key: str) -&gt; Union[bytes, str, None]:
+    """
+    Get binary or string data associated with this node.
+
+    Args:
+        node_id: node identifier
+        key: a key to locate the data (can only contain alphanumeric characters and underscores)
+
+    Returns:
+        data or None if no data is associated with the key
+    """
+    return self.dsu.get_node_data(node_id, key)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_node_ids" class="doc doc-heading">
+            <code class="highlight language-python">get_node_ids()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the ids of all nodes in the topology</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>list[str]</code>
+              –
+              <div class="doc-md-description">
+                <p>list of node ids</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_node_ids(self) -&gt; list[str]:
+    """
+    Get the ids of all nodes in the topology
+
+    Returns:
+        list of node ids
+    """
+    return self.network.get_node_ids()</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_node_metadata" class="doc doc-heading">
+            <code class="highlight language-python">get_node_metadata(node_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the metadata of a node</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the id of the node</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>dict[str, <span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span>]</code>
+              –
+              <div class="doc-md-description">
+                <p>A dictionary containing the metadata</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_node_metadata(self, node_id: str) -&gt; dict[str, JsonType]:
+    """
+    Get the metadata of a node
+
+    Args:
+        node_id: the id of the node
+
+    Returns:
+        A dictionary containing the metadata
+    """
+    return self.network.get_node(node_id).get_metadata()</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_node_properties" class="doc doc-heading">
+            <code class="highlight language-python">get_node_properties(node_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the properties for the specified node</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the node identifier</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>dict[str, <span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span>]</code>
+              –
+              <div class="doc-md-description">
+                <p>A dictionary containing the properties defined for that node</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_node_properties(self, node_id: str) -&gt; dict[str, JsonType]:
+    """
+    Get the properties for the specified node
+
+    Args:
+        node_id: the node identifier
+
+    Returns:
+        A dictionary containing the properties defined for that node
+    """
+    return self.dsu.get_node_properties(node_id)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_node_property" class="doc doc-heading">
+            <code class="highlight language-python">get_node_property(node_id, property_name)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Gets the property of a node, or None if the node's property is not set</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the node's identifier</p>
+              </div>
+            </li>
+            <li>
+              <b><code>property_name</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the name of the property</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_node_property(self, node_id: str, property_name: str) -&gt; JsonType:
+    """
+    Gets the property of a node, or None if the node's property is not set
+
+    Args:
+        node_id: the node's identifier
+        property_name: the name of the property
+    """
+
+    return self.dsu.get_node_property(node_id, property_name)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_node_type" class="doc doc-heading">
+            <code class="highlight language-python">get_node_type(node_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the node package and type for a given node</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the id of the node to retrieve</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>tuple[str, str]</code>
+              –
+              <div class="doc-md-description">
+                <p>tuple (package_id, node_type_id)</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_node_type(self, node_id: str) -&gt; tuple[str, str]:
+    """
+    Get the node package and type for a given node
+
+    Args:
+        node_id: the id of the node to retrieve
+
+    Returns:
+        tuple (package_id, node_type_id)
+    """
+    node = self.network.get_node(node_id)
+    node_type = node.get_node_type()
+    return self.schema.split_descriptor(node_type)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_output_port_names" class="doc doc-heading">
+            <code class="highlight language-python">get_output_port_names(node_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the output port names for a given node</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the id of the node</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>list[str]</code>
+              –
+              <div class="doc-md-description">
+                <p>list of output port names</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_output_port_names(self, node_id: str) -&gt; list[str]:
+    """
+    Get the output port names for a given node
+
+    Args:
+        node_id: the id of the node
+
+    Returns:
+        list of output port names
+    """
+    node = self.network.get_node(node_id)
+    node_type = self.schema.get_node_type(node.get_node_type())
+    return [name for (name, _) in node_type.get_output_ports()]</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_package_data" class="doc doc-heading">
+            <code class="highlight language-python">get_package_data(package_id, key)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get binary or string data associated with a package configuration.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>package_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>package identifier</p>
+              </div>
+            </li>
+            <li>
+              <b><code>key</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>a key to locate the data (can only contain alphanumeric characters and underscores)</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="typing.Union">Union</span>[bytes, str, None]</code>
+              –
+              <div class="doc-md-description">
+                <p>data or None if no data is associated with the key</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_package_data(self, package_id: str, key: str) -&gt; Union[bytes, str, None]:
+    """
+    Get binary or string data associated with a package configuration.
+
+    Args:
+        package_id: package identifier
+        key: a key to locate the data (can only contain alphanumeric characters and underscores)
+
+    Returns:
+        data or None if no data is associated with the key
+    """
+    return self.dsu.get_package_data(package_id, key)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_package_properties" class="doc doc-heading">
+            <code class="highlight language-python">get_package_properties(package_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the properties for the specified package</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>package_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the package identifier</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>dict[str, <span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span>]</code>
+              –
+              <div class="doc-md-description">
+                <p>A dictionary containing the properties defined for that package</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_package_properties(self, package_id: str) -&gt; dict[str, JsonType]:
+    """
+    Get the properties for the specified package
+
+    Args:
+        package_id: the package identifier
+
+    Returns:
+        A dictionary containing the properties defined for that package
+    """
+    return self.dsu.get_package_properties(package_id)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.get_package_property" class="doc doc-heading">
+            <code class="highlight language-python">get_package_property(package_id, property_name)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Gets the property of a package, or None if the package or package property is not set</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>package_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the package's identifier</p>
+              </div>
+            </li>
+            <li>
+              <b><code>property_name</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the name of the property</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span></code>
+              –
+              <div class="doc-md-description">
+                <p>property value or None if no such property exists</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_package_property(self, package_id: str, property_name: str) -&gt; JsonType:
+    """
+    Gets the property of a package, or None if the package or package property is not set
+
+    Args:
+        package_id: the package's identifier
+        property_name: the name of the property
+
+    Returns:
+        property value or None if no such property exists
+    """
+    return self.dsu.get_package_property(package_id, property_name)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.load_dir" class="doc doc-heading">
+            <code class="highlight language-python">load_dir()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Load a topology from the execution folder</p>
+
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def load_dir(self):
+    """
+    Load a topology from the execution folder
+    """
+    (added_node_ids, added_link_ids, node_renamings) = self.network.load_dir({})
+    for node_id in added_node_ids:
+        node = self.network.get_node(node_id)
+        self.executor.add_node(node)
+    for link_id in added_link_ids:
+        link = self.network.get_link(link_id)
+        self.executor.add_link(link)
+    self.empty = False</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.load_zip" class="doc doc-heading">
+            <code class="highlight language-python">load_zip(from_file)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Load a topology from a binary stream</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>from_file</code></b>
+                  (<code><span title="io.BytesIO">BytesIO</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>a binary stream, opened for reading</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>dict</code>
+              –
+              <div class="doc-md-description">
+                <p>a dictionary containing any node renamings performed to avoid id collisions with existing nodes</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def load_zip(self, from_file: io.BytesIO) -&gt; dict:
+    """
+    Load a topology from a binary stream
+
+    Args:
+        from_file: a binary stream, opened for reading
+
+    Returns:
+        a dictionary containing any node renamings performed to avoid id collisions with existing nodes
+    """
+    (added_node_ids, added_link_ids, node_renamings) = self.network.load_zip(from_file, merging=not self.empty)
+    for node_id in added_node_ids:
+        node = self.network.get_node(node_id)
+        self.executor.add_node(node)
+    for link_id in added_link_ids:
+        link = self.network.get_link(link_id)
+        self.executor.add_link(link)
+    self.empty = False
+    return node_renamings</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.remove_link" class="doc doc-heading">
+            <code class="highlight language-python">remove_link(link_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Remove a link from the topology</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>link_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the link's unique identifier</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def remove_link(self, link_id: str):
+    """
+    Remove a link from the topology
+
+    Args:
+        link_id: the link's unique identifier
+    """
+    if self.network.get_link(link_id) is None:
+        raise InvalidNodeError(f"Link with id {link_id} does not exist")
+    else:
+        self.network.remove_link(link_id)
+        self.executor.remove_link(link_id)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.remove_node" class="doc doc-heading">
+            <code class="highlight language-python">remove_node(node_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Remove a node from the topology</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the node's unique identifier</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def remove_node(self, node_id: str):
+    """
+    Remove a node from the topology
+
+    Args:
+        node_id: the node's unique identifier
+    """
+    if self.network.get_node(node_id) is None:
+        raise InvalidNodeError(f"Node with id {node_id} does not exist")
+    self.network.remove_node(node_id)
+    self.executor.remove_node(node_id)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.run" class="doc doc-heading">
+            <code class="highlight language-python">run(inject_input_values={}, output_listeners={})</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Run the topology, blocking until the execution of all nodes completes</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>inject_input_values</code></b>
+                  (<code><span title="typing.Dict">Dict</span>[str, <span title="typing.Any">Any</span>]</code>, default:
+                      <code>{}</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>a mapping from an input port described by node_id:port to an extra value to present at that port during execution</p>
+              </div>
+            </li>
+            <li>
+              <b><code>output_listeners</code></b>
+                  (<code><span title="typing.Dict">Dict</span>[str, <span title="typing.Callable">Callable</span>[[<span title="typing.Any">Any</span>], None]]</code>, default:
+                      <code>{}</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>a mapping from an output port described by node_id:port to a listener that is invoked with values that are output at that port</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>        <p>Returns:
+    True if the execution succeeded, false if it failed due to some error</p>
+
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def run(self, inject_input_values:Dict[str,Any]={}, output_listeners:Dict[str,Callable[[Any],None]]={}) -&gt; bool:
+    """
+    Run the topology, blocking until the execution of all nodes completes
+
+    Args:
+        inject_input_values: a mapping from an input port described by node_id:port to an extra value to present at that port during execution
+        output_listeners: a mapping from an output port described by node_id:port to a listener that is invoked with values that are output at that port
+    Returns:
+        True if the execution succeeded, false if it failed due to some error
+    """
+    for (node_port,value) in inject_input_values.items():
+        (node_id,port) = tuple(node_port.split(":"))
+        self.executor.inject_input((node_id,port),value)
+
+    for (node_port,value_listener) in output_listeners.items():
+        (node_id, port) = tuple(node_port.split(":"))
+        self.executor.add_output_listener((node_id,port),value_listener)
+
+    return self.executor.run(terminate_on_complete=True)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.save_zip" class="doc doc-heading">
+            <code class="highlight language-python">save_zip(to_file=None)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Save a topology to a binary stream</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>to_file</code></b>
+                  (<code><span title="io.BufferedWriter">BufferedWriter</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>an opened binary file to which the topology will be saved, if provided</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="typing.Union">Union</span>[None, bytes]</code>
+              –
+              <div class="doc-md-description">
+                <p>if to_file is not provided, returns a bytes object containing the saved topology</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def save_zip(self, to_file: io.BufferedWriter=None) -&gt;Union[None,bytes]:
+    """
+    Save a topology to a binary stream
+
+    Args:
+        to_file: an opened binary file to which the topology will be saved, if provided
+
+    Returns:
+        if to_file is not provided, returns a bytes object containing the saved topology
+    """
+    return self.network.save_zip(to_file)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.serialise" class="doc doc-heading">
+            <code class="highlight language-python">serialise()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Serialise the topology to a dictionary without data/properties</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>dict[str, <span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span>]</code>
+              –
+              <div class="doc-md-description">
+                <p>a dictionary describing the topoology</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def serialise(self) -&gt; dict[str,JsonType]:
+    """
+    Serialise the topology to a dictionary without data/properties
+
+    Returns:
+        a dictionary describing the topoology
+    """
+
+    return self.network.save()</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.serialise_link" class="doc doc-heading">
+            <code class="highlight language-python">serialise_link(link_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Serialise a link to a dictionary</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>link_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the id of the link to serialise</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>dict[str, <span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span>]</code>
+              –
+              <div class="doc-md-description">
+                <p>a dictionary describing the link</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def serialise_link(self, link_id:str) -&gt; dict[str, JsonType]:
+    """
+    Serialise a link to a dictionary
+
+    Args:
+        link_id: the id of the link to serialise
+
+    Returns:
+        a dictionary describing the link
+    """
+    link = self.network.get_link(link_id)
+    msg = {}
+    msg["link_id"] = link_id
+    msg["link_type"] = link.get_link_type()
+    msg["from_node"] = link.from_node_id
+    msg["from_port"] = link.from_port
+    msg["to_node"] = link.to_node_id
+    msg["to_port"] = link.to_port
+    return msg</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.serialise_node" class="doc doc-heading">
+            <code class="highlight language-python">serialise_node(node_id)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Serialise a node to a dictionary</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the id of the node to serialise</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>dict[str, <span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span>]</code>
+              –
+              <div class="doc-md-description">
+                <p>a dictionary describing the node</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def serialise_node(self, node_id:str) -&gt; dict[str, JsonType]:
+    """
+    Serialise a node to a dictionary
+
+    Args:
+        node_id: the id of the node to serialise
+
+    Returns:
+        a dictionary describing the node
+    """
+    node = self.network.get_node(node_id)
+    d = {}
+    d["node_id"] = node_id
+    d["node_type"] = node.get_node_type()
+    (x, y) = node.get_xy()
+    d["x"] = x
+    d["y"] = y
+    d["metadata"] = node.get_metadata()
+    return d</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.set_configuration" class="doc doc-heading">
+            <code class="highlight language-python">set_configuration(package_id, properties)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Set the properties of a package's configuration</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>package_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the id of the packahe</p>
+              </div>
+            </li>
+            <li>
+              <b><code>properties</code></b>
+                  (<code>dict</code>)
+              –
+              <div class="doc-md-description">
+                <p>a dictionary containing the configuration properties, must be JSON serialisable.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_configuration(self, package_id: str, properties: dict):
+    """
+    Set the properties of a package's configuration
+
+    Args:
+        package_id: the id of the packahe
+        properties: a dictionary containing the configuration properties, must be JSON serialisable.
+    """
+    self.dsu.set_package_properties(package_id, properties)
+    self.empty = False</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.set_metadata" class="doc doc-heading">
+            <code class="highlight language-python">set_metadata(metadata)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Set metadata for this topology</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>metadata</code></b>
+                  (<code>dict[str, str]</code>)
+              –
+              <div class="doc-md-description">
+                <p>a dictionary containing metadata, consisting of string keys and values.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<details class="notes" open>
+  <summary>Notes</summary>
+  <p>the following keys will be understood by hyrrokkin based tools - version, description, authors</p>
+</details>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_metadata(self, metadata: dict[str, str]):
+    """
+    Set metadata for this topology
+
+    Args:
+        metadata: a dictionary containing metadata, consisting of string keys and values.
+
+    Notes:
+        the following keys will be understood by hyrrokkin based tools - version, description, authors
+    """
+    self.network.set_metadata(metadata)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.set_node_data" class="doc doc-heading">
+            <code class="highlight language-python">set_node_data(node_id, key, data)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Set binary or string data associated with this node.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>node identifier</p>
+              </div>
+            </li>
+            <li>
+              <b><code>key</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>a key to locate the data (can only contain alphanumeric characters and underscores)</p>
+              </div>
+            </li>
+            <li>
+              <b><code>data</code></b>
+                  (<code><span title="typing.Union">Union</span>[bytes, str, None]</code>)
+              –
+              <div class="doc-md-description">
+                <p>data to be stored</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_node_data(self, node_id: str, key: str, data: Union[bytes, str, None]):
+    """
+    Set binary or string data associated with this node.
+
+    Args:
+        node_id: node identifier
+        key: a key to locate the data (can only contain alphanumeric characters and underscores)
+        data: data to be stored
+    """
+    self.dsu.set_node_data(node_id, key, data)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.set_node_property" class="doc doc-heading">
+            <code class="highlight language-python">set_node_property(node_id, property_name, property_value)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Update the property of a node</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the node's identifier</p>
+              </div>
+            </li>
+            <li>
+              <b><code>property_name</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the name of the property</p>
+              </div>
+            </li>
+            <li>
+              <b><code>property_value</code></b>
+                  (<code><span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>the value of the property, must be JSON serialisable</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_node_property(self, node_id: str, property_name: str, property_value: JsonType):
+    """
+    Update the property of a node
+
+    Args:
+        node_id: the node's identifier
+        property_name: the name of the property
+        property_value: the value of the property, must be JSON serialisable
+    """
+    self.dsu.set_node_property(node_id, property_name, property_value)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.set_package_data" class="doc doc-heading">
+            <code class="highlight language-python">set_package_data(package_id, key, data)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Set binary or string data associated with this node.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>package_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>package identifier</p>
+              </div>
+            </li>
+            <li>
+              <b><code>key</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>a key to locate the data (can only contain alphanumeric characters and underscores)</p>
+              </div>
+            </li>
+            <li>
+              <b><code>data</code></b>
+                  (<code><span title="typing.Union">Union</span>[bytes, str, None]</code>)
+              –
+              <div class="doc-md-description">
+                <p>data to be stored</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_package_data(self, package_id: str, key: str, data: Union[bytes, str, None]):
+    """
+    Set binary or string data associated with this node.
+
+    Args:
+        package_id: package identifier
+        key: a key to locate the data (can only contain alphanumeric characters and underscores)
+        data: data to be stored
+    """
+    self.dsu.set_package_data(package_id, key, data)
+    self.empty = False</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.set_package_property" class="doc doc-heading">
+            <code class="highlight language-python">set_package_property(package_id, property_name, property_value)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Update the property of a package</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>package_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the packae's identifier</p>
+              </div>
+            </li>
+            <li>
+              <b><code>property_name</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the name of the property</p>
+              </div>
+            </li>
+            <li>
+              <b><code>property_value</code></b>
+                  (<code><span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>the value of the property, must be JSON serialisable</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_package_property(self, package_id: str, property_name: str, property_value: JsonType):
+    """
+    Update the property of a package
+
+    Args:
+        package_id: the packae's identifier
+        property_name: the name of the property
+        property_value: the value of the property, must be JSON serialisable
+    """
+    self.dsu.set_package_property(package_id, property_name, property_value)
+    self.empty = False</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.update_node_metadata" class="doc doc-heading">
+            <code class="highlight language-python">update_node_metadata(node_id, metadata)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Updates the metadata of a node</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the id of the node</p>
+              </div>
+            </li>
+            <li>
+              <b><code>metadata</code></b>
+                  (<code>dict[str, <span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span>]</code>)
+              –
+              <div class="doc-md-description">
+                <p>a dictionary containing the new metadata</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def update_node_metadata(self, node_id:str, metadata:dict[str,JsonType]):
+    """
+    Updates the metadata of a node
+
+    Args:
+        node_id: the id of the node
+        metadata: a dictionary containing the new metadata
+    """
+    node = self.network.get_node(node_id)
+    node.update_metadata(metadata)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.api.topology.Topology.update_node_position" class="doc doc-heading">
+            <code class="highlight language-python">update_node_position(node_id, x, y)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Update a node's position</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>node_id</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the id of the node to update</p>
+              </div>
+            </li>
+            <li>
+              <b><code>x</code></b>
+                  (<code>int</code>)
+              –
+              <div class="doc-md-description">
+                <p>the new x-coordinate value</p>
+              </div>
+            </li>
+            <li>
+              <b><code>y</code></b>
+                  (<code>int</code>)
+              –
+              <div class="doc-md-description">
+                <p>the new y-coordinate value</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
+              <pre class="highlight"><code class="language-python">def update_node_position(self, node_id:str, x:int, y:int):
+    """
+    Update a node's position
+
+    Args:
+        node_id: the id of the node to update
+        x: the new x-coordinate value
+        y: the new y-coordinate value
+    """
+    self.network.move_node(node_id, x, y)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../node_service_api/" class="btn btn-neutral float-left" title="Node service api"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../node_service_api/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

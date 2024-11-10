@@ -19,26 +19,58 @@
 
 
 from abc import abstractmethod
+from typing import Dict, List, Any
+
+from hyrrokkin.utils.type_hints import ClientMessageProtocol
+from hyrrokkin.services.configuration_services import ConfigurationServices
 
 
 class ConfigurationBase:
 
     @abstractmethod
-    def __init__(self, services):
+    def __init__(self, services:ConfigurationServices):
+        """
+        Create an instance of this Configuration
+
+        Args:
+            services: an object providing useful services, for example to get or set property values
+        """
         pass
 
     @abstractmethod
-    def open_client(self, client_id, client_options, send_fn):
+    def open_client(self, client_id:str, client_options:dict, send_fn:ClientMessageProtocol) -> ClientMessageProtocol:
+        """
+        Called when a client is attached to the configuration
+
+        Arguments:
+            client_id: a unique identifier for the client 
+            client_options: a set of parameters accompanying the connection
+            send_fn: a function that the node can use to send messages to the client
+
+        Returns:
+            a function that the client can use to send messages to the configuration
+
+        """
         pass
 
     @abstractmethod
-    def close_client(self, client_id):
+    def close_client(self, client_id:str):
+        """
+        Called when a client is detached from the configuration
+
+        Arguments:
+            client_id: the unique identifier of the client that is being detached
+
+        Notes:
+            a call to close_client is preceeded by a call to open_client with the same client_id
+        """
         pass
 
     @abstractmethod
     def close(self):
+        """
+        Called before the configuration instance is deleted
+        """
         pass
 
-    @abstractmethod
-    def properties_updated(self):
-        pass
+    

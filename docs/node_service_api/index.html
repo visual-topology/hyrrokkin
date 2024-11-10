@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Node service api - hyrrokkin documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Node service api";
+        var mkdocs_page_input_path = "node_service_api.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> hyrrokkin documentation
+        </a>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Welcome to the Hyrrokkin documentation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration_api/">Configuration api</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration_service_api/">Configuration service api</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../node_api/">Node api</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Node service api</a>
+    <ul class="current">
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../topology_api/">Topology api</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">hyrrokkin documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Node service api</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h2 id="node-services-api">Node Services API</h2>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="hyrrokkin.services.node_services"></a>
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="hyrrokkin.services.node_services.NodeServices" class="doc doc-heading">
+            <code>NodeServices</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+
+        <p>Defines a set of services that a Hyrrokkin node can access.</p>
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+                <pre class="highlight"><code class="language-python">class NodeServices:
+
+    """
+    Defines a set of services that a Hyrrokkin node can access.
+    """
+
+    def __init__(self, node_id: str):
+        self.node_id = node_id
+        self.wrapper = None
+
+    def get_node_id(self) -&gt; str:
+        """
+        Returns:
+            a string containing the node's unique ID
+        """
+        return self.node_id
+
+    def set_status_info(self, status_message:str):
+        """
+        Set an info status message for the node.
+
+        Args:
+            status_message: a short descriptive message or empty string
+        """
+        self.wrapper.set_status(StatusStates.info.value, status_message)
+
+    def set_status_warning(self, status_message:str):
+        """
+        Set a warning status message for the node.
+
+        Args:
+            status_message: a short descriptive message or empty string
+        """
+        self.wrapper.set_status(StatusStates.warning.value, status_message)
+
+    def set_status_error(self, status_message:str):
+        """
+        Set an error status message for the node.
+
+        Args:
+            status_message: a short descriptive message or empty string
+        """
+        self.wrapper.set_status(StatusStates.error.value, status_message)
+
+    def clear_status(self):
+        """
+        Clear any previous status message on the node
+        """
+        self.wrapper.set_status(StatusStates.clear.value, "")
+
+    def set_state(self, state:str):
+        """
+        Manually set the state of the node
+
+        Args:
+            state: one of "pending", "executing", "executed", "failed".
+
+        Notes:
+            Normally this is tracked by hyrrokkin, and nodes should not need to call this service.
+            After making this call, the execution state will be tracked manually for the node involved.
+        """
+        self.wrapper.set_execution_state(state)
+
+    def request_run(self):
+        """
+        Request that this node be run
+        """
+        self.wrapper.request_execution()
+
+    def get_property(self, property_name:str, default_value:JsonType=None) -&gt; JsonType:
+        """
+        Get the current value for the node's property
+
+        Args:
+            property_name: the name of the property
+            default_value: a default value to return if the named property is not defined on the node
+
+        Returns:
+            the property value
+        """
+        return self.wrapper.get_property(property_name, default_value)
+
+    def set_property(self, property_name:str, property_value: JsonType):
+        """
+        Set the current value for the node's property
+
+        Args:
+            property_name: the name of the property
+            property_value: the JSON-serialisable property value
+
+        Notes: 
+            property values MUST be JSON-serialisable
+        """
+        self.wrapper.set_property(property_name, property_value)
+
+    def get_data(self, key:str) -&gt; typing.Union[bytes,None]:
+        """
+        Get binary data (bytes) associated with this node.
+
+        Args:
+            key: a key to locate the data (can only contain alphanumeric characters and underscores)
+
+        Returns:
+            data or None if no data is associated with the key
+        """
+        return self.wrapper.get_data(key)
+
+    def set_data(self, key:str, data:typing.Union[bytes,None]):
+        """
+        Set binary data (bytes) associated with this node.
+
+        Args:
+            key: a key to locate the data (can only contain alphanumeric characters and underscores)
+            data: binary data (bytes) to be stored (or None to remove previously stored data for this key)
+        """
+        self.wrapper.set_data(key, data)
+
+    def get_configuration(self, package_id:str=None) -&gt; typing.Union[None,"ConfigurationBase"]:
+        """
+        Obtain a configuration object if defined for the node's package.
+
+        Args:
+            package_id: the id of the package configuration to obtain, or None to obtain the node's package configuration
+
+        Returns:
+            a configuration object or None
+        """
+        return self.wrapper.get_configuration_wrapper(package_id).get_instance()</code></pre>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.clear_status" class="doc doc-heading">
+            <code class="highlight language-python">clear_status()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Clear any previous status message on the node</p>
+
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def clear_status(self):
+    """
+    Clear any previous status message on the node
+    """
+    self.wrapper.set_status(StatusStates.clear.value, "")</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.get_configuration" class="doc doc-heading">
+            <code class="highlight language-python">get_configuration(package_id=None)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Obtain a configuration object if defined for the node's package.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>package_id</code></b>
+                  (<code>str</code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>the id of the package configuration to obtain, or None to obtain the node's package configuration</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="typing.Union">Union</span>[None, ConfigurationBase]</code>
+              –
+              <div class="doc-md-description">
+                <p>a configuration object or None</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_configuration(self, package_id:str=None) -&gt; typing.Union[None,"ConfigurationBase"]:
+    """
+    Obtain a configuration object if defined for the node's package.
+
+    Args:
+        package_id: the id of the package configuration to obtain, or None to obtain the node's package configuration
+
+    Returns:
+        a configuration object or None
+    """
+    return self.wrapper.get_configuration_wrapper(package_id).get_instance()</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.get_data" class="doc doc-heading">
+            <code class="highlight language-python">get_data(key)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get binary data (bytes) associated with this node.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>key</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>a key to locate the data (can only contain alphanumeric characters and underscores)</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="typing.Union">Union</span>[bytes, None]</code>
+              –
+              <div class="doc-md-description">
+                <p>data or None if no data is associated with the key</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_data(self, key:str) -&gt; typing.Union[bytes,None]:
+    """
+    Get binary data (bytes) associated with this node.
+
+    Args:
+        key: a key to locate the data (can only contain alphanumeric characters and underscores)
+
+    Returns:
+        data or None if no data is associated with the key
+    """
+    return self.wrapper.get_data(key)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.get_node_id" class="doc doc-heading">
+            <code class="highlight language-python">get_node_id()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>str</code>
+              –
+              <div class="doc-md-description">
+                <p>a string containing the node's unique ID</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_node_id(self) -&gt; str:
+    """
+    Returns:
+        a string containing the node's unique ID
+    """
+    return self.node_id</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.get_property" class="doc doc-heading">
+            <code class="highlight language-python">get_property(property_name, default_value=None)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Get the current value for the node's property</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>property_name</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the name of the property</p>
+              </div>
+            </li>
+            <li>
+              <b><code>default_value</code></b>
+                  (<code><span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>a default value to return if the named property is not defined on the node</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span></code>
+              –
+              <div class="doc-md-description">
+                <p>the property value</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_property(self, property_name:str, default_value:JsonType=None) -&gt; JsonType:
+    """
+    Get the current value for the node's property
+
+    Args:
+        property_name: the name of the property
+        default_value: a default value to return if the named property is not defined on the node
+
+    Returns:
+        the property value
+    """
+    return self.wrapper.get_property(property_name, default_value)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.request_run" class="doc doc-heading">
+            <code class="highlight language-python">request_run()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Request that this node be run</p>
+
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def request_run(self):
+    """
+    Request that this node be run
+    """
+    self.wrapper.request_execution()</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.set_data" class="doc doc-heading">
+            <code class="highlight language-python">set_data(key, data)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Set binary data (bytes) associated with this node.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>key</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>a key to locate the data (can only contain alphanumeric characters and underscores)</p>
+              </div>
+            </li>
+            <li>
+              <b><code>data</code></b>
+                  (<code><span title="typing.Union">Union</span>[bytes, None]</code>)
+              –
+              <div class="doc-md-description">
+                <p>binary data (bytes) to be stored (or None to remove previously stored data for this key)</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_data(self, key:str, data:typing.Union[bytes,None]):
+    """
+    Set binary data (bytes) associated with this node.
+
+    Args:
+        key: a key to locate the data (can only contain alphanumeric characters and underscores)
+        data: binary data (bytes) to be stored (or None to remove previously stored data for this key)
+    """
+    self.wrapper.set_data(key, data)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.set_property" class="doc doc-heading">
+            <code class="highlight language-python">set_property(property_name, property_value)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Set the current value for the node's property</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>property_name</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>the name of the property</p>
+              </div>
+            </li>
+            <li>
+              <b><code>property_value</code></b>
+                  (<code><span title="hyrrokkin.utils.type_hints.JsonType">JsonType</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>the JSON-serialisable property value</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<details class="notes" open>
+  <summary>Notes</summary>
+  <p>property values MUST be JSON-serialisable</p>
+</details>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_property(self, property_name:str, property_value: JsonType):
+    """
+    Set the current value for the node's property
+
+    Args:
+        property_name: the name of the property
+        property_value: the JSON-serialisable property value
+
+    Notes: 
+        property values MUST be JSON-serialisable
+    """
+    self.wrapper.set_property(property_name, property_value)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.set_state" class="doc doc-heading">
+            <code class="highlight language-python">set_state(state)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Manually set the state of the node</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>state</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>one of "pending", "executing", "executed", "failed".</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<details class="notes" open>
+  <summary>Notes</summary>
+  <p>Normally this is tracked by hyrrokkin, and nodes should not need to call this service.
+After making this call, the execution state will be tracked manually for the node involved.</p>
+</details>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_state(self, state:str):
+    """
+    Manually set the state of the node
+
+    Args:
+        state: one of "pending", "executing", "executed", "failed".
+
+    Notes:
+        Normally this is tracked by hyrrokkin, and nodes should not need to call this service.
+        After making this call, the execution state will be tracked manually for the node involved.
+    """
+    self.wrapper.set_execution_state(state)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.set_status_error" class="doc doc-heading">
+            <code class="highlight language-python">set_status_error(status_message)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Set an error status message for the node.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>status_message</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>a short descriptive message or empty string</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_status_error(self, status_message:str):
+    """
+    Set an error status message for the node.
+
+    Args:
+        status_message: a short descriptive message or empty string
+    """
+    self.wrapper.set_status(StatusStates.error.value, status_message)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.set_status_info" class="doc doc-heading">
+            <code class="highlight language-python">set_status_info(status_message)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Set an info status message for the node.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>status_message</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>a short descriptive message or empty string</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_status_info(self, status_message:str):
+    """
+    Set an info status message for the node.
+
+    Args:
+        status_message: a short descriptive message or empty string
+    """
+    self.wrapper.set_status(StatusStates.info.value, status_message)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.services.node_services.NodeServices.set_status_warning" class="doc doc-heading">
+            <code class="highlight language-python">set_status_warning(status_message)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Set a warning status message for the node.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>status_message</code></b>
+                  (<code>str</code>)
+              –
+              <div class="doc-md-description">
+                <p>a short descriptive message or empty string</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <pre class="highlight"><code class="language-python">def set_status_warning(self, status_message:str):
+    """
+    Set a warning status message for the node.
+
+    Args:
+        status_message: a short descriptive message or empty string
+    """
+    self.wrapper.set_status(StatusStates.warning.value, status_message)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../node_api/" class="btn btn-neutral float-left" title="Node api"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../topology_api/" class="btn btn-neutral float-right" title="Topology api">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../node_api/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../topology_api/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

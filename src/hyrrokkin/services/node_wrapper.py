@@ -20,20 +20,18 @@
 import logging
 import inspect
 
-from hyrrokkin.utils.data_store_utils import DataStoreUtils
 from .wrapper import Wrapper
 
 class NodeWrapper(Wrapper):
 
-    def __init__(self, executor, network, node_id, services):
-        super().__init__(executor, network)
+    def __init__(self, executor, execution_folder, node_id, services):
+        super().__init__(executor, execution_folder)
 
         self.node_id = node_id
 
         self.services = services
 
-        self.dsu = DataStoreUtils(self.network.get_directory())
-        self.properties = self.dsu.get_node_properties(self.node_id)
+        self.properties = self.get_datastore_utils().get_node_properties(self.node_id)
 
         self.configuration = None
         self.logger = logging.getLogger(f"NodeWrapper[{node_id}]")
@@ -63,6 +61,7 @@ class NodeWrapper(Wrapper):
             self.logger.exception(f"Error in reset_execution for node {self.node_id}")
 
     async def execute(self, inputs):
+        # note - any exceptions raised in the node instance's run method will be caught by the caller
         if hasattr(self.instance, "run"):
             if inspect.iscoroutinefunction(self.instance.run):
                 return await self.instance.run(inputs)
@@ -73,6 +72,9 @@ class NodeWrapper(Wrapper):
 
     def set_status(self, state, status_message):
         self.executor.notify(lambda executor: executor.status_update(self.node_id, "node", status_message, state))
+
+    def set_execution_state(self, execution_state):
+        self.executor.notify(lambda executor: executor.set_execution_state(self.node_id, execution_state))
 
     def request_execution(self):
         self.executor.request_node_execution(self.node_id)
@@ -87,22 +89,24 @@ class NodeWrapper(Wrapper):
             if property_name in self.properties:
                 del self.properties[property_name]
 
-        self.dsu.set_node_property(self.node_id, property_name, property_value)
+        self.get_datastore_utils().set_node_property(self.node_id, property_name, property_value)
 
     def reload_properties(self):
-        self.properties = self.dsu.get_node_properties(self.node_id)
+        self.properties = self.get_datastore_utils().get_node_properties(self.node_id)
 
     def get_data(self, key):
-        return self.dsu.get_node_data(self.node_id, key)
+        return self.get_datastore_utils().get_node_data(self.node_id, key)
 
     def set_data(self, key, data):
-        self.dsu.set_node_data(self.node_id, key, data)
+        self.get_datastore_utils().set_node_data(self.node_id, key, data)
 
-    def set_configuration(self, configuration):
-        self.configuration = configuration
+    def set_configuration_wrapper(self, configuration_wrapper):
+        self.configuration_wrapper = configuration_wrapper
 
-    def get_configuration(self):
-        return self.configuration
+    def get_configuration_wrapper(self, package_id):
+        return self.configuration_wrapper if package_id is None else self.executor.get_configuration_wrapper(package_id)
+
+
 
 
 

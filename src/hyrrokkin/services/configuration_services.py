@@ -105,3 +105,18 @@ class ConfigurationServices:
         :param data: binary data (bytes) to be stored (or None to remove previously stored data for this key)
         """
         self.wrapper.set_data(key, data)
+
+    def get_configuration(self, package_id:str) -> typing.Union[None,"ConfigurationBase"]:
+        """
+        Obtain a configuration object if defined for the specified package.
+
+        Args:
+            package_id: the id of the package configuration to obtain
+
+        Returns:
+            a configuration object or None
+        """
+        wrapper = self.wrapper.get_configuration_wrapper(package_id)
+        if wrapper is None:
+            return None
+        return wrapper.get_instance()

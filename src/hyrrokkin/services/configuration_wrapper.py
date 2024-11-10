@@ -19,19 +19,15 @@
 
 import logging
 
-from hyrrokkin.utils.data_store_utils import DataStoreUtils
 from .wrapper import Wrapper
 
 class ConfigurationWrapper(Wrapper):
 
-    def __init__(self, executor, network, package_id, services):
-        super().__init__(executor, network)
+    def __init__(self, executor, execution_folder, package_id, services):
+        super().__init__(executor, execution_folder)
         self.package_id = package_id
         self.services = services
-
-        dsu = DataStoreUtils(self.network.get_directory())
-        self.properties = dsu.get_package_properties(self.package_id)
-
+        self.properties = self.get_datastore_utils().get_package_properties(self.package_id)
         self.message_handler = None
         self.logger = logging.getLogger(f"ConfigurationWrapper[{package_id}]")
 
@@ -53,19 +49,20 @@ class ConfigurationWrapper(Wrapper):
         else:
             if property_name in self.properties:
                 del self.properties[property_name]
-        dsu = DataStoreUtils(self.network.get_directory())
-        dsu.set_package_property(self.package_id, property_name, property_value)
+        self.get_datastore_utils().set_package_property(self.package_id, property_name, property_value)
 
     def set_status(self, state, status_message):
-        pass
+        self.executor.notify(lambda executor: executor.status_update(self.package_id, "configuration", status_message, state))
 
     def get_data(self, key):
-        dsu = DataStoreUtils(self.network.get_directory())
-        return dsu.get_package_data(self.package_id, key)
+        return self.get_datastore_utils().get_package_data(self.package_id, key)
 
     def set_data(self, key, data):
-        dsu = DataStoreUtils(self.network.get_directory())
-        dsu.set_package_data(self.package_id, key, data)
+        return self.get_datastore_utils().set_package_data(self.package_id, key, data)
+
+    def get_configuration_wrapper(self, package_id):
+        return self.executor.get_configuration_wrapper(package_id)
+
 
 
 

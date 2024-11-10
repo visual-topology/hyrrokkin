@@ -18,11 +18,9 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import typing
-from hyrrokkin.base.configuration_base import ConfigurationBase
-from hyrrokkin.exceptions.node_execution_failed import NodeExecutionFailed
 from hyrrokkin.services.status_states import StatusStates
 
-from src.hyrrokkin.utils.type_hints import JsonType
+from hyrrokkin.utils.type_hints import JsonType
 
 class NodeServices:
 
@@ -31,7 +29,6 @@ class NodeServices:
     """
 
     def __init__(self, node_id: str):
-        
         self.node_id = node_id
         self.wrapper = None
 
@@ -75,17 +72,22 @@ class NodeServices:
         """
         self.wrapper.set_status(StatusStates.clear.value, "")
 
-    def note_still_running(self, is_still_running):
+    def set_state(self, state:str):
         """
-        Indicate if execution is continuing after the execute method has completed
+        Manually set the state of the node
 
-        Each call to note_still_running(true) should be balanced with a later call to note_still_running(false)
+        Args:
+            state: one of "pending", "executing", "executed", "failed".
+
+        Notes:
+            Normally this is tracked by hyrrokkin, and nodes should not need to call this service.
+            After making this call, the execution state will be tracked manually for the node involved.
         """
-        pass
+        self.wrapper.set_execution_state(state)
 
     def request_run(self):
         """
-        Request that this node be executed
+        Request that this node be run
         """
         self.wrapper.request_execution()
 
@@ -137,23 +139,23 @@ class NodeServices:
         """
         self.wrapper.set_data(key, data)
 
-    def get_configuration(self) -> typing.Union[None,ConfigurationBase]:
+    def get_configuration(self, package_id:str=None) -> typing.Union[None,"ConfigurationBase"]:
         """
         Obtain a configuration object if defined for the node's package.
+
+        Args:
+            package_id: the id of the package configuration to obtain, or None to obtain the node's package configuration
 
         Returns:
             a configuration object or None
         """
-        return self.wrapper.get_configuration().get_instance()
+        return self.wrapper.get_configuration_wrapper(package_id).get_instance()
 
-    def get_connections(self) -> dict:
-        """
-        Obtain a dictionary object describing the input and output port connections.
 
-        Returns:
-            dict
-        """
-        return self.wrapper.get_connections()
+
+
+
+    
 
 
 
