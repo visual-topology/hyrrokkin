@@ -18,78 +18,54 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import math
-import json
-
-def is_prime(n):
-    lim = int(math.sqrt(n))
-    for i in range(2,lim+1):
-        if n % i == 0:
-            return False
-    return True
-
-def find_primes(n, primes):
-    if primes == []:
-        primes.append(2)
-    i = primes[-1]+1
-    while i<=n:
-        if is_prime(i):
-            primes.append(i)
-        i += 1
-
-def find_prime_factors(n, primes=[]):
-    lim = int(math.sqrt(n))
-    if len(primes) == 0 or primes[-1] < lim:
-        find_primes(lim, primes)
-    factors = []
-    idx = 0
-    while idx < len(primes):
-        if primes[idx] > n:
-            break
-        if n % primes[idx] == 0:
-            factors.append(primes[idx])
-            n = n // primes[idx]
-            idx = 0
-        else:
-            idx += 1
-        if n == 1:
-            break
-
-    if n > 1:
-        factors.append(n)
-    return factors
-
-if __name__ == '__main__':
-    primes = []
-    for i in range(0,200):
-        print(i,find_prime_factors(i,primes))
-    print(primes)
+from functools import reduce
 
 class PrimeFactorsNode:
 
     def __init__(self,services):
         self.services = services
 
+    def is_prime(self,n):
+        root = int(math.sqrt(n))
+        for i in range(2, root + 1):
+            if n % i == 0:
+                return False
+        return True
+
+    def find_prime_factors(self,n):
+        factors = self.services.get_configuration().get_prime_factors(n) or []
+        if not factors:
+            i = 2
+            r = n
+            while True:
+                if r % i == 0:
+                    factors.append(i)
+                    r //= i
+                    if self.is_prime(r):
+                        break
+                else:
+                    i += 1
+            if r > 1:
+                factors.append(r)
+            assert (reduce(lambda x, y: x * y, factors, 1) == n and all(self.is_prime(f) for f in factors))
+            self.services.get_configuration().set_prime_factors(n, factors)
+        return factors
+
     def run(self, inputs):
         input_values = inputs.get("data_in",[])
         if len(input_values):
             value = input_values[0]
-            saved_primes = self.services.get_data("primes")
-            if saved_primes is not None:
-                saved_primes = json.loads(saved_primes.decode("utf-8"))
-            else:
-                saved_primes = []
-            factors = find_prime_factors(value, saved_primes)
-            self.services.set_data("primes",json.dumps(saved_primes).encode("utf-8"))
-            return { "data_out":factors }
+            if not isinstance(value,int):
+                raise Exception(f"input value {value} is invalid (not integer)")
+            if value < 2:
+                raise Exception(f"input value {value} is invalid (< 2)")
 
-    def connections_changed(self, input_connection_counts, output_connection_counts):
-        pass
-        # if input_connection_counts.get("data_in",0) == 0:
-        #     self.services.set_status_warning("No inputs are currently connected")
-        # else:
-        #     print("Connections: inputs=" + json.dumps(input_connection_counts) + " outputs="+json.dumps(output_connection_counts))
-        # for input_node in self.services.get_connected_input_nodes("data_in"):
-        #     print("Input node: "+str(input_node))
-        #
-        # for output_node in self.services.get_connected_output_nodes("data_out"):
-        #     print("Output node: "+str(output_node))
+            prime_factors = self.services.get_configuration().get_prime_factors(value)
+            if not prime_factors:
+                prime_factors = self.find_prime_factors(value)
+            return { "data_out":prime_factors }
+
+
+
+
+

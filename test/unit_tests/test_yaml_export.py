@@ -35,18 +35,18 @@ configuration:
   numberstream: {}
 nodes:
   n0:
-    type: numberstream:integer_value_node
+    type: numberstream:number_input_node
     properties:
       value: 99
   n1:
-    type: numberstream:find_prime_factors_node
+    type: numberstream:prime_factors_node
     properties: {}
   n2:
-    type: numberstream:integerlist_display_node
+    type: numberstream:number_display_node
     properties: {}
 links:
 - n0 => n1
-- n1 => n2
+- n1 => n2:integerlist_data_in
 """
 
 
@@ -59,12 +59,12 @@ class YamlImportTests(unittest.TestCase):
         t = Topology(tempfile.mkdtemp(),[numberstream_package])
         t.set_metadata({"name":"test topology"})
 
-        t.add_node("n0", "numberstream:integer_value_node", {"value": 99})
-        t.add_node("n1", "numberstream:find_prime_factors_node", {})
-        t.add_node("n2", "numberstream:integerlist_display_node", {})
+        t.add_node("n0", "numberstream:number_input_node", {"value": 99})
+        t.add_node("n1", "numberstream:prime_factors_node", {})
+        t.add_node("n2", "numberstream:number_display_node", {})
 
         t.add_link("l0", "n0", "data_out", "n1", "data_in")
-        t.add_link("l1", "n1", "data_out", "n2", "data_in")
+        t.add_link("l1", "n1", "data_out", "n2", "integerlist_data_in")
 
         with tempfile.NamedTemporaryFile(suffix=".yaml", delete=True) as yamlf:
             with open(yamlf.name,"w") as of:

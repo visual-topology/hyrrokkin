@@ -35,14 +35,11 @@ class FileStorageTests(unittest.TestCase):
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as saved:
 
             t = Topology(tempfile.mkdtemp(),[numberstream_package])
-            t.add_node("n0", "numberstream:integer_value_node", {"value": 99})
-
+            t.add_node("n0", "numberstream:integer_value_node", properties={"value": 99})
 
             test_binary1 = b"34723974"
 
-
             t.set_node_data("n0", "abc0", test_binary1)
-
             t.set_node_data("n0", "abc1", None)
 
             self.assertEqual(test_binary1, t.get_node_data("n0", "abc0"))
@@ -55,7 +52,6 @@ class FileStorageTests(unittest.TestCase):
 
             with open(saved.name, "rb") as f:
                 t2.load_zip(f)
-
 
             self.assertEqual(test_binary1, t2.get_node_data("n0", "abc0"))
             self.assertIsNone(t2.get_node_data("n0", "abc1"))

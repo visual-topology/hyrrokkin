@@ -18,8 +18,6 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import typing
-from hyrrokkin.base.configuration_base import ConfigurationBase
-from hyrrokkin.exceptions.node_execution_failed import NodeExecutionFailed
 from hyrrokkin.services.status_states import StatusStates
 
 from hyrrokkin.utils.type_hints import JsonType
@@ -74,18 +72,18 @@ class NodeServices:
         """
         self.wrapper.set_status(StatusStates.clear.value, "")
 
-    def set_execution_state(self, execution_state:str):
+    def set_state(self, state:str):
         """
-        Manually set the execution state of the node
+        Manually set the state of the node
 
         Args:
-            execution_state: one of "pending", "executing", "executed", "failed"
+            state: one of "pending", "executing", "executed", "failed".
 
         Notes:
-            Normally this is tracked by hyrrokkin.  After making this call, the execution state will be
-            tracked manually for the node involved.
+            Normally this is tracked by hyrrokkin, and nodes should not need to call this service.
+            After making this call, the execution state will be tracked manually for the node involved.
         """
-        self.wrapper.set_execution_state(execution_state)
+        self.wrapper.set_execution_state(state)
 
     def request_run(self):
         """
@@ -141,25 +139,18 @@ class NodeServices:
         """
         self.wrapper.set_data(key, data)
 
-    def get_configuration(self) -> typing.Union[None,ConfigurationBase]:
+    def get_configuration(self, package_id:str=None) -> typing.Union[None,"ConfigurationBase"]:
         """
         Obtain a configuration object if defined for the node's package.
+
+        Args:
+            package_id: the id of the package configuration to obtain, or None to obtain the node's package configuration
 
         Returns:
             a configuration object or None
         """
-        return self.wrapper.get_configuration().get_instance()
+        return self.wrapper.get_configuration_wrapper(package_id).get_instance()
 
-    def fire_output_port_event(self, output_port_name:str, event_type:str, event_value:object=None):
-        """
-        Send an event from an output port to all nodes connected to that output port
-
-        Args:
-            output_port_name: the name of the output port
-            event_type: the type of event to fire
-            event_value: an optional value associated with the event
-        """
-        return self.wrapper.fire_output_port_event(output_port_name, event_type, event_value)
 
 
 

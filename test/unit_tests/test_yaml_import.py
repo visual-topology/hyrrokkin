@@ -31,11 +31,11 @@ numberstream_package = "hyrrokkin.example_packages.numberstream"
 test_yaml = """
 nodes:
   n0:
-    type: numberstream:integer_value_node
+    type: numberstream:number_input_node
     properties:
       value: 200
   n1:
-    type: numberstream:find_prime_factors_node
+    type: numberstream:prime_factors_node
     properties: {}
     
 links: 

@@ -3,18 +3,16 @@
     "metadata": {
         "name": "Number Stream",
         "version": "0.0.1",
-        "description": "package for generating and manipulating streams of numbers"
+        "description": "a small example package for manipulating numbers"
     },
-    "executor": "python",
-    "dependencies": [],
     "configuration": {
         "classname": "numberstream_configuration.NumberstreamConfiguration"
     },
     "node_types": {
-        "integer_value_node": {
+        "number_input_node": {
             "metadata": {
-                "name": "Define and output an integer value",
-                "description": "Integer Value"
+                "name": "Number Input Node",
+                "description": "Define an integer value"
             },
             "output_ports": {
                 "data_out": {
@@ -23,15 +21,15 @@
             },
             "classname": "nodes.number_input_node.NumberInputNode"
         },
-        "find_prime_factors_node": {
+        "prime_factors_node": {
             "metadata": {
-                "name": "Find Prime Factors",
+                "name": "Prime Factors Node",
                 "description": "Calculate the prime factors of each input number"
             },
             "input_ports": {
                 "data_in": {
-                    "allow_multiple_connections": false,
-                    "link_type": "numberstream:integer"
+                    "link_type": "numberstream:integer",
+                    "allow_multiple_connections": false
                 }
             },
             "output_ports": {
@@ -41,13 +39,16 @@
             },
             "classname": "nodes.prime_factors_node.PrimeFactorsNode"
         },
-        "integerlist_display_node": {
+        "number_display_node": {
             "metadata": {
-                "name": "Integers Display",
-                "description": "Display any received lists of integers"
+                "name": "Number Display Node",
+                "description": "Display all input numbers"
             },
             "input_ports": {
-                "data_in": {
+                "integer_data_in": {
+                    "link_type": "numberstream:integer"
+                },
+                "integerlist_data_in": {
                     "link_type": "numberstream:integerlist"
                 }
             },
@@ -60,13 +61,13 @@
         "integer": {
             "metadata": {
                 "name": "Integer",
-                "description": "This type of link carries values consisting of a single integer"
+                "description": "This type of link carries integer values"
             }
         },
         "integerlist": {
             "metadata": {
                 "name": "IntegerList",
-                "description": "This type of link carries values consisting of a list of integers"
+                "description": "This type of link carries values that are lists of integers"
             }
         }
     }

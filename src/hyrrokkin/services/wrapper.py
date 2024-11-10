@@ -17,14 +17,16 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from .client_service import ClientService
+
 from hyrrokkin.utils.resource_loader import ResourceLoader
+from hyrrokkin.utils.data_store_utils import DataStoreUtils
 
 class Wrapper:
 
-    def __init__(self, executor, network):
+    def __init__(self, executor, execution_folder):
         self.executor = executor
-        self.network = network
+        self.execution_folder = execution_folder
+        self.datastore_utils = DataStoreUtils(self.execution_folder)
         self.instance = None
         self.client_services = {}
 
@@ -33,6 +35,9 @@ class Wrapper:
 
     def get_instance(self):
         return self.instance
+
+    def get_datastore_utils(self):
+        return self.datastore_utils
 
     def open_client(self, client_id, client_options, client_service_class):
 

@@ -22,11 +22,12 @@ import threading
 import logging
 from collections import defaultdict
 import traceback
+import time
 
 from hyrrokkin.executor.node_execution_states import NodeExecutionStates
 from hyrrokkin.schema.schema import Schema
 from hyrrokkin.utils.resource_loader import ResourceLoader
-
+from hyrrokkin.executor.graph_link import GraphLink
 from hyrrokkin.services.node_services import NodeServices
 from hyrrokkin.services.node_wrapper import NodeWrapper
 from hyrrokkin.services.configuration_services import ConfigurationServices
@@ -44,28 +45,32 @@ def async_exception_safe(func):
 
 class ExecutionThread(threading.Thread):
 
-    def __init__(self, graph_executor, executor_queue, network, execution_limit=4, injected_inputs={}, output_listeners={}):
+    def __init__(self, graph_executor, schema, executor_queue, execution_folder, execution_limit=4, injected_inputs={}, output_listeners={}):
         super().__init__()
         self.graph_executor = graph_executor
+        self.schema = schema
         self.executor_queue = executor_queue
+        self.execution_folder = execution_folder
         self.node_outputs = {}
         self.node_wrappers = {}
         self.configuration_wrappers = {}
-        self.network = network
         self.execution_limit = execution_limit
         self.injected_inputs = injected_inputs
         self.output_listeners = output_listeners
 
-        # lookup incoming links by node-id and port
-        self.in_links = {}  # in-node-id => in-port => [link]
-
-        # lookup outgoing links by node-id and port
-        self.out_links = {}  # out-node-id => out-port => [link]
+        # new state
+        self.nodes = {}  # node-id = > NodeWrapper
+        self.links = {}  # link-id = > GraphLink
+        self.out_links = {}  # node-id = > output-port = > [GraphLink]
+        self.in_links = {}  # node-id = > input-port = > [GraphLink]
 
         self.loop = asyncio.new_event_loop()
 
-        self.dirty_nodes = {}  # node-id = > True
-        self.executing_nodes = {}  # node-id = > True
+        self.dirty_nodes = {}  # node-id => True
+        self.executing_nodes = {}  # node-id => True
+        self.executed_nodes = {} # node-id => True
+        self.failed_nodes = {} # node-id => Exception
+
         self.executing_tasks = set()
 
         self.lock = threading.Lock()
@@ -94,7 +99,7 @@ class ExecutionThread(threading.Thread):
         self.loop.stop()
 
     def is_failed(self):
-        return self.failed
+        return self.failed or len(self.failed_nodes) > 0
 
     def handle_loop_exception(self, context):
         self.logger.error("Loop Exception")
@@ -119,34 +124,14 @@ class ExecutionThread(threading.Thread):
         self.terminate_on_complete = terminate_on_complete
         self.paused = False
 
-        # load all nodes and links from the network
-
-        all_node_ids = self.network.get_node_ids(traversal_order=True)
-
-        for (package_id, package) in self.network.get_schema().get_packages().items():
-            self.register_package(package_id, package)
-
-        for node_id in all_node_ids:
-            self.register_node(node_id)
-
-        for link_id in self.network.get_link_ids():
-            link = self.network.get_link(link_id)
-
-            if link.to_node_id not in self.in_links:
-                self.in_links[link.to_node_id] = defaultdict(list)
-            self.in_links[link.to_node_id][link.to_port].append(link)
-            if link.from_node_id not in self.out_links:
-                self.out_links[link.from_node_id] = defaultdict(list)
-            self.out_links[link.from_node_id][link.from_port].append(link)
-
         # notify the nodes of their connections
-        for node_id in all_node_ids:
+        for node_id in self.nodes:
             self.notify_connection_counts(node_id)
-
-        # for nodes that do not have any outputs from the previous execution
-        for node_id in all_node_ids:
-            self.dirty_nodes[node_id] = True
-            self.reset_execution(node_id)
+        #
+        # # for nodes that do not have any outputs from the previous execution
+        # for node_id in all_node_ids:
+        #     self.dirty_nodes[node_id] = True
+        #     self.reset_execution(node_id)
 
         self.dispatch()
 
@@ -161,12 +146,20 @@ class ExecutionThread(threading.Thread):
         self.stop_executor()
 
     @async_exception_safe
-    async def node_added(self, node):
+    async def package_added(self,package):
+        package_id = package.get_id()
+        self.register_package(package_id, package)
+
+    @async_exception_safe
+    async def node_added(self, node, loading=False):
         node_id = node.get_node_id()
+        self.nodes[node_id] = node
         self.register_node(node_id)
-        self.notify_connection_counts(node_id)
         self.mark_dirty(node_id)
-        self.dispatch()
+        if not loading:
+            self.notify_connection_counts(node_id)
+            self.dispatch()
+            print("node added")
 
     @async_exception_safe
     async def node_removed(self, node_id):
@@ -180,6 +173,8 @@ class ExecutionThread(threading.Thread):
             del self.in_links[node_id]
         if node_id in self.out_links:
             del self.out_links[node_id]
+        if node_id in self.nodes:
+            del self.nodes[node_id]
 
     def get_outputs_from(self, output_node_id):
         input_node_ports = []
@@ -198,30 +193,30 @@ class ExecutionThread(threading.Thread):
         return output_node_ports
 
     @async_exception_safe
-    async def link_added(self, link):
+    async def link_added(self, link, loading=False):
+        graph_link = GraphLink(self, link.from_node_id,link.from_port,link.to_node_id,link.to_port)
+        self.links[link.get_link_id()] = graph_link
         if link.to_node_id not in self.in_links:
-            self.in_links[link.to_node_id] = defaultdict(list)
-        self.in_links[link.to_node_id][link.to_port].append(link)
+            self.in_links[graph_link.to_node_id] = defaultdict(list)
+        self.in_links[graph_link.to_node_id][link.to_port].append(graph_link)
         if link.from_node_id not in self.out_links:
-            self.out_links[link.from_node_id] = defaultdict(list)
-        self.out_links[link.from_node_id][link.from_port].append(link)
+            self.out_links[graph_link.from_node_id] = defaultdict(list)
+        self.out_links[graph_link.from_node_id][link.from_port].append(graph_link)
 
-        self.notify_connection_counts(link.to_node_id)
-        self.notify_connection_counts(link.from_node_id)
-
-        if link.from_port not in self.node_outputs.get(link.from_node_id,{}):
-            self.mark_dirty(link.from_node_id)
-        else:
+        if not loading:
             self.mark_dirty(link.to_node_id)
-        self.dispatch()
+            self.notify_connection_counts(graph_link.to_node_id)
+            self.notify_connection_counts(graph_link.from_node_id)
+            self.dispatch()
+            print("link added")
 
     @async_exception_safe
     async def link_removed(self, link_id):
-        link = self.network.get_link(link_id)
+        link = self.links[link_id]
 
         self.in_links[link.to_node_id][link.to_port].remove(link)
         self.out_links[link.from_node_id][link.from_port].remove(link)
-        self.network.remove_link(link_id)
+        del self.links[link_id]
 
         self.notify_connection_counts(link.to_node_id)
         self.notify_connection_counts(link.from_node_id)
@@ -232,13 +227,21 @@ class ExecutionThread(threading.Thread):
     def notify_connection_counts(self, node_id):
         try:
             if node_id in self.node_wrappers:
-                new_counts = self.network.get_connection_counts(node_id)
-                self.node_wrappers[node_id].connections_changed(new_counts["inputs"],new_counts["outputs"])
+                input_connection_counts = {}
+                output_connection_counts = {}
+                in_links = self.in_links.get(node_id,{})
+                for port in in_links:
+                    input_connection_counts[port] = len(in_links[port])
+                out_links = self.out_links.get(node_id, {})
+                for port in out_links:
+                    output_connection_counts[port] = len(out_links[port])
+
+                self.node_wrappers[node_id].connections_changed(input_connection_counts,output_connection_counts)
         except:
             self.logger.exception("notify_connection_counts")
 
     async def clear(self):
-        self.network.clear()
+        pass # TODO
 
     @async_exception_safe
     async def request_execution_coro(self, node_id):
@@ -315,16 +318,16 @@ class ExecutionThread(threading.Thread):
                 pending[node_or_package_id].remove(client_id)
 
     def register_node(self, node_id):
-        node = self.network.get_node(node_id)
+        node = self.nodes[node_id]
         node_type_name = node.get_node_type()
         node_id = node.get_node_id()
-        node_type = self.network.schema.get_node_type(node_type_name)
+        node_type = self.schema.get_node_type(node_type_name)
         (package_id, _) = Schema.split_descriptor(node_type_name)
 
         services = NodeServices(node_id)
-        node_wrapper = NodeWrapper(self.graph_executor, self.network, node_id, services)
+        node_wrapper = NodeWrapper(self.graph_executor, self.execution_folder, node_id, services)
         if package_id in self.configuration_wrappers:
-            node_wrapper.set_configuration(self.configuration_wrappers[package_id])
+            node_wrapper.set_configuration_wrapper(self.configuration_wrappers[package_id])
         classname = node_type.get_classname()
         cls = ResourceLoader.get_class(classname)
         try:
@@ -336,7 +339,7 @@ class ExecutionThread(threading.Thread):
         self.node_wrappers[node_id] = node_wrapper
 
         self.is_executing[node_id] = 0
-        self.execution_states[node_id] = ""
+        # self.set_node_execution_state(node_id, NodeExecutionStates.pending.value)
 
         if node_id in self.pending_node_clients:
             for (client_id, client_options, client_service_class) in self.pending_node_clients[node_id]:
@@ -354,7 +357,7 @@ class ExecutionThread(threading.Thread):
             classname = package_configuration["classname"]
 
             services = ConfigurationServices(package_id)
-            configuration_wrapper = ConfigurationWrapper(self.graph_executor, self.network, package_id, services)
+            configuration_wrapper = ConfigurationWrapper(self.graph_executor, self.execution_folder, package_id, services)
 
             services.set_wrapper(configuration_wrapper)
             cls = ResourceLoader.get_class(classname)
@@ -382,7 +385,12 @@ class ExecutionThread(threading.Thread):
 
         self.dirty_nodes[node_id] = True
 
-        self.set_node_execution_state(node_id, NodeExecutionStates.pending)
+        if node_id in self.executed_nodes:
+            del self.executed_nodes[node_id]
+        if node_id in self.failed_nodes:
+            del self.failed_nodes[node_id]
+
+        self.set_node_execution_state(node_id, NodeExecutionStates.pending.value)
         self.reset_execution(node_id)
 
         # mark all downstream nodes as dirty
@@ -421,26 +429,28 @@ class ExecutionThread(threading.Thread):
 
     def can_execute(self, node_id):
         for (output_node_id, output_port) in self.get_inputs_to(node_id):
-            if output_node_id not in self.node_outputs:
-                return False
-            if output_port not in self.node_outputs[output_node_id]:
+            if output_node_id not in self.executed_nodes:
                 return False
         return True
 
     def pre_execute(self, node_id):
         inputs = {}
         # collect together the input values at each input port
-        # start with output vaues from connected ports
-        for input_port_name in self.network.get_input_ports(node_id):
+        # start with output values from connected ports
+        in_links = self.in_links.get(node_id, {})
+        for input_port_name in in_links:
             inputs[input_port_name] = []
-            for (output_node_id, output_port) in self.network.get_inputs_to(node_id, input_port_name):
-                predecessor_outputs = self.node_outputs[output_node_id]
-                if output_port in predecessor_outputs:
-                    inputs[input_port_name].append(predecessor_outputs[output_port])
+            for link in in_links[input_port_name]:
+                inputs[input_port_name].append(link.get_value())
+
         # add in any injected input values
-        for input_port_name in self.network.get_input_ports(node_id):
-            if (node_id, input_port_name) in self.injected_inputs:
-                inputs[input_port_name].append(self.injected_inputs[(node_id,input_port_name)])
+        for (injected_node_id, injected_input_port_name) in self.injected_inputs:
+            if injected_node_id == node_id:
+                if injected_input_port_name not in inputs:
+                    inputs[injected_input_port_name] = []
+                injected_value = self.injected_inputs[(injected_node_id,injected_input_port_name)]
+                inputs[injected_input_port_name].append(injected_value)
+
         return inputs
 
     @async_exception_safe
@@ -449,15 +459,14 @@ class ExecutionThread(threading.Thread):
         try:
             node_wrapper = self.node_wrappers[node_id]
             node_wrapper.reload_properties()
-            self.set_node_execution_state(node_id, NodeExecutionStates.executing)
+            self.set_node_execution_state(node_id, NodeExecutionStates.executing.value)
             results = await node_wrapper.execute(inputs)
             if results is None:
                 results = {}
-            self.set_node_execution_state(node_id, NodeExecutionStates.executed, results)
+            self.set_node_execution_state(node_id, NodeExecutionStates.executed.value)
             self.post_execute(node_id, results, None)
         except Exception as ex:
-            self.logger.exception(f"Error executing {node_id}")
-            self.set_node_execution_state(node_id, NodeExecutionStates.failed, ex)
+            self.set_node_execution_state(node_id, NodeExecutionStates.failed.value, ex)
             self.post_execute(node_id, None, ex)
 
         self.dispatch()
@@ -467,31 +476,31 @@ class ExecutionThread(threading.Thread):
             del self.executing_nodes[node_id]
         if node_id in self.node_outputs:
             del self.node_outputs[node_id]
+        if exn is not None:
+            self.failed_nodes[node_id] = exn
+        else:
+            self.executed_nodes[node_id] = True
         if result is not None:
             self.node_outputs[node_id] = {}
-            output_port_names = self.network.get_output_ports(node_id)
-            for port_name in output_port_names:
-                if port_name in result:
-                    self.node_outputs[node_id][port_name] = result[port_name]
-                else:
-                    self.logger.warning(f"No output at port {port_name} after execution of {node_id}")
 
             for port_name in result:
-                if port_name not in output_port_names:
-                    self.logger.warning(f"Output at unexpected port {port_name} after execution of {node_id}")
+                self.node_outputs[node_id][port_name] = result[port_name]
 
             for port_name in result:
                 if (node_id, port_name) in self.output_listeners:
                     self.output_listeners[(node_id,port_name)](result[port_name])
 
-    def schedule_node_added(self, node):
-        asyncio.run_coroutine_threadsafe(self.node_added(node), self.loop)
+    def schedule_package_added(self, package):
+        asyncio.run_coroutine_threadsafe(self.package_added(package), self.loop)
+
+    def schedule_node_added(self, node, loading=False):
+        asyncio.run_coroutine_threadsafe(self.node_added(node, loading), self.loop)
 
     def schedule_node_removed(self, node_id):
         asyncio.run_coroutine_threadsafe(self.node_removed(node_id), self.loop)
 
-    def schedule_link_added(self, link):
-        asyncio.run_coroutine_threadsafe(self.link_added(link), self.loop)
+    def schedule_link_added(self, link, loading=False):
+        asyncio.run_coroutine_threadsafe(self.link_added(link, loading), self.loop)
 
     def schedule_link_removed(self, link_id):
         asyncio.run_coroutine_threadsafe(self.link_removed(link_id), self.loop)
@@ -535,9 +544,10 @@ class ExecutionThread(threading.Thread):
         if self.graph_executor.status_callback:
             self.executor_queue.put(lambda graph_executor: graph_executor.status_update(node_id, message, state))
 
-    def set_node_execution_state(self, node_id, execution_state, exn_or_result=None, is_manual=False):
+    def set_node_execution_state(self, node_id, execution_state, exn=None, is_manual=False):
+        at_time = time.time()
         if self.graph_executor.node_execution_callback:
-            self.executor_queue.put(lambda graph_executor: graph_executor.node_execution_update(node_id, execution_state, exn_or_result, is_manual))
+            self.executor_queue.put(lambda graph_executor: graph_executor.node_execution_update(at_time, node_id, execution_state, exn, is_manual))
 
     def send_node_message(self, node_id, client_id, *msg):
         self.executor_queue.put(lambda graph_executor: graph_executor.message_update(node_id, client_id, *msg))
@@ -562,6 +572,9 @@ class ExecutionThread(threading.Thread):
         if package_id in self.configuration_wrappers:
             self.configuration_wrappers[package_id].set_property(property_name, property_value)
 
+    def get_configuration_wrapper(self, package_id):
+        return self.configuration_wrappers.get(package_id,None)
+
     def close(self):
         for node_id in self.node_wrappers:
             self.node_wrappers[node_id].close()
@@ -573,13 +586,7 @@ class ExecutionThread(threading.Thread):
 
         self.configuration_wrappers = {}
 
-    def get_connected_node_instances(self, node_id, port_name, is_input_port):
-        node_ports = self.network.get_inputs_to(node_id,port_name) if is_input_port else self.network.get_outputs_from(node_id,port_name)
-        connected_instances = []
-        for (node_id, port_name) in node_ports:
-            wrapper = self.node_wrappers.get(node_id,None)
-            connected_instances.append([wrapper,port_name])
-        return connected_instances
+
 
 
 

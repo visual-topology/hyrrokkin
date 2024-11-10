@@ -19,24 +19,25 @@
 
 import queue
 
-from hyrrokkin.model.network import Network
-
 from hyrrokkin.executor.execution_thread import ExecutionThread
 from hyrrokkin.executor.execution_client import ExecutionClient
 from hyrrokkin.utils.resource_loader import ResourceLoader
 
 class GraphExecutor:
 
-    def __init__(self, schema, status_callback, node_execution_callback, execution_folder="."):
-        self.network = Network(schema, execution_folder)
+    def __init__(self, network, schema, status_callback, node_execution_callback, execution_folder="."):
+        self.network = network
+        self.schema = schema
         self.queue = queue.Queue()
         self.stop_on_execution_complete = False
         self.status_callback = status_callback
         self.node_execution_callback = node_execution_callback
+        self.execution_folder = execution_folder
         self.paused = False
         self.reset()
         self.injected_inputs = {}
         self.output_listeners = {}
+
 
     def reset(self):
         self.execution_complete_callback = None
@@ -84,15 +85,31 @@ class GraphExecutor:
             self.et.schedule_close_client(target_id, client_id)
             del self.execution_clients[(target_id, client_id)]
 
-    def run(self, terminate_on_complete=False):
+    def load_execution(self):
+        for (package_id, package) in self.schema.get_packages().items():
+            self.et.schedule_package_added(package)
 
-        self.et = ExecutionThread(self, self.queue, self.network, injected_inputs=self.injected_inputs, output_listeners=self.output_listeners)
+        # load all nodes and links
+
+        all_node_ids = self.network.get_node_ids(traversal_order=True)
+
+        for node_id in all_node_ids:
+            self.et.schedule_node_added(self.network.get_node(node_id), loading=True)
+
+        for link_id in self.network.get_link_ids():
+            link = self.network.get_link(link_id)
+            self.et.schedule_link_added(link, loading=True)
+
+    def run(self, terminate_on_complete=False):
+        self.et = ExecutionThread(self, self.network.get_schema(), self.queue, self.execution_folder, injected_inputs=self.injected_inputs, output_listeners=self.output_listeners)
         for (id, client_id) in self.execution_clients:
             client = self.execution_clients[(id, client_id)]
             client.connect_execution(self.et)
             self.et.schedule_open_client(id, client_id, client.get_client_options(), client.get_execution_client_service_class())
 
         self.et.start()
+
+        self.load_execution()
 
         self.stop_on_execution_complete = terminate_on_complete
 
@@ -110,16 +127,26 @@ class GraphExecutor:
             client = self.execution_clients[(id, client_id)]
             client.disconnect()
 
-        return self.wait()
+        result = self.close()
+
+        # drain final notifications
+        while not self.queue.empty():
+            notify_fn = self.queue.get()
+            if notify_fn:
+                notify_fn(self)
+
+        return result
 
     def start(self):
-        self.et = ExecutionThread(self, self.queue, self.network, injected_inputs=self.injected_inputs, output_listeners=self.output_listeners)
+        self.et = ExecutionThread(self, self.network.get_schema(), self.queue, self.execution_folder, injected_inputs=self.injected_inputs, output_listeners=self.output_listeners)
         for (id, client_id) in self.execution_clients:
             client = self.execution_clients[(id, client_id)]
             client.connect_execution(self.et)
             self.et.schedule_open_client(id, client_id, client.get_client_options(), client.get_execution_client_service_class())
 
         self.et.start()
+
+        self.load_execution()
 
         self.stop_on_execution_complete = False
 
@@ -132,7 +159,13 @@ class GraphExecutor:
             else:
                 notify_fn(self)
 
-    def wait(self):
+        # drain final notifications
+        while not self.queue.empty():
+            notify_fn = self.queue.get()
+            if notify_fn:
+                notify_fn(self)
+
+    def close(self):
         self.et.join()
         self.et.loop.close()
         self.et.close()
@@ -145,26 +178,12 @@ class GraphExecutor:
             self.et.schedule_stop_executor()
 
     def add_node(self, node):
-        self.network.add_node(node)
         if self.et:
             self.et.schedule_node_added(node)
 
     def add_link(self, link):
-        self.network.add_link(link)
         if self.et:
             self.et.schedule_link_added(link)
-
-    def get_node(self, node_id):
-        return self.network.get_node(node_id)
-
-    def get_link(self, link_id):
-        return self.network.get_link(link_id)
-
-    def get_node_ids(self):
-        return self.network.get_node_ids()
-
-    def get_link_ids(self):
-        return self.network.get_link_ids()
 
     def recv_node_message(self, node_id, client_id, msg):
         self.et.schedule_recv_message(("node", node_id), client_id, msg)
@@ -173,62 +192,22 @@ class GraphExecutor:
         self.et.schedule_recv_message(("configuration", package_id), client_id, msg)
 
     def remove_node(self, node_id):
-        self.network.remove_node(node_id)
         if self.et:
             self.et.schedule_node_removed(node_id)
 
     def remove_link(self, link_id):
         if self.et:
             self.et.schedule_link_removed(link_id)
-        else:
-            self.network.remove_link(link_id)
 
     def clear(self):
-        self.network.clear()
         if self.et:
             self.et.schedule_clear()
 
-    def get_inputs_to(self, node_id, input_port_name):
-        return self.network.get_inputs_to(node_id, input_port_name)
-
-    def get_outputs_from(self, node_id, output_port_name):
-        return self.network.get_outputs_from(node_id, output_port_name)
-
-    def save(self, to_file=None):
-        return self.network.save_zip(to_file)
-
-    def save_network_only(self):
-        return self.network.save()
-
-    def load_dir(self):
-        (added_node_ids, added_link_ids, node_renamings) = self.network.load_dir({})
-        for node_id in added_node_ids:
-            node = self.network.get_node(node_id)
-            if self.et:
-                self.et.schedule_node_added(node)
-        for link_id in added_link_ids:
-            link = self.network.get_link(link_id)
-            if self.et:
-                self.et.schedule_link_added(link)
-        return (added_node_ids, added_link_ids, node_renamings)
-
-    def load_zip(self, f, merging=False):
-        (added_node_ids, added_link_ids, node_renamings) = self.network.load_zip(f,merging=merging)
-        for node_id in added_node_ids:
-            node = self.network.get_node(node_id)
-            if self.et:
-                self.et.schedule_node_added(node)
-        for link_id in added_link_ids:
-            link = self.network.get_link(link_id)
-            if self.et:
-                self.et.schedule_link_added(link)
-        return (added_node_ids, added_link_ids, node_renamings)
-
-    def set_metadata(self, metadata):
-        self.network.set_metadata(metadata)
-
-    def get_metadata(self):
-        return self.network.get_metadata()
+    def get_configuration_wrapper(self, package_id):
+        if self.et:
+            return self.et.get_configuration_wrapper(package_id)
+        else:
+            return None
 
     def request_node_execution(self, node_id):
         self.et.schedule_request_node_execution(node_id)
@@ -249,9 +228,9 @@ class GraphExecutor:
             self.status_callback(target_id, target_type, message, status)
         return False
 
-    def node_execution_update(self, node_id, node_execution_state, exn_or_result, is_manual):
+    def node_execution_update(self, at_time, node_id, node_execution_state, exn, is_manual):
         if self.node_execution_callback:
-            self.node_execution_callback(node_id, node_execution_state, exn_or_result, is_manual)
+            self.node_execution_callback(at_time, node_id, node_execution_state, exn, is_manual)
         return False
 
     def set_execution_complete_callback(self, execution_complete_callback):
@@ -262,12 +241,7 @@ class GraphExecutor:
             self.execution_complete_callback()
         return self.stop_on_execution_complete
 
-    def fire_output_port_event(self, node_id, output_port_name, event_type, event_value):
-        connected_node_ports = self.et.get_connected_node_instances(node_id, output_port_name, False)
-        for connected_node_port in connected_node_ports:
-            node = connected_node_port[0]
-            input_port_name = connected_node_port[1]
-            node.handle_input_port_event(input_port_name, event_value, event_value)
+
 
 
 

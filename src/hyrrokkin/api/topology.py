@@ -29,7 +29,7 @@ from hyrrokkin.exceptions.invalid_link_error import InvalidLinkError
 from hyrrokkin.exceptions.invalid_node_error import InvalidNodeError
 from hyrrokkin.utils.data_store_utils import DataStoreUtils
 from hyrrokkin.utils.type_hints import JsonType
-from hyrrokkin.utils.type_hints import ClientMessageProtocol
+from hyrrokkin.model.network import Network
 from hyrrokkin.api.topology_interactor import TopologyInteractor
 
 
@@ -37,7 +37,7 @@ class Topology:
 
     def __init__(self, execution_folder:str, package_list: list[str],
                  status_handler: Callable[[str, str, str, str], None] = None,
-                 execution_handler: Callable[[str, str, Union[Dict, Exception, None], bool], None] = None):
+                 execution_handler: Callable[[Union[float,None], str, str, Union[Dict, Exception, None], bool], None] = None):
         """
         Create a topology
 
@@ -47,7 +47,7 @@ class Topology:
             status_handler: specify a function to call when a node/configuration sets its status
                                  passing parameters target_id, target_type, msg, status
             execution_handler: specify a function to call when a node changes its execution status
-                                passing parameters lambda node_id, state, exception_or_result, is_manual
+                                passing parameters timestamp, node_id, state, exception, is_manual
         """
         self.execution_folder = execution_folder
         os.makedirs(self.execution_folder, exist_ok=True)
@@ -58,7 +58,8 @@ class Topology:
         self.status_handler = status_handler
         self.execution_handler = execution_handler
 
-        self.executor = GraphExecutor(self.schema, execution_folder=self.execution_folder,
+        self.network = Network(self.schema, self.execution_folder)
+        self.executor = GraphExecutor(self.network, self.schema, execution_folder=self.execution_folder,
                                       status_callback=self.status_handler,
                                       node_execution_callback=self.execution_handler)
         # the empty flag indicates that the topology contains no nodes and no
@@ -75,7 +76,13 @@ class Topology:
         Returns:
             a dictionary containing any node renamings performed to avoid id collisions with existing nodes
         """
-        (nodes_added, links_added, node_renamings) = self.executor.load_zip(from_file, merging=not self.empty)
+        (added_node_ids, added_link_ids, node_renamings) = self.network.load_zip(from_file, merging=not self.empty)
+        for node_id in added_node_ids:
+            node = self.network.get_node(node_id)
+            self.executor.add_node(node)
+        for link_id in added_link_ids:
+            link = self.network.get_link(link_id)
+            self.executor.add_link(link)
         self.empty = False
         return node_renamings
 
@@ -83,10 +90,16 @@ class Topology:
         """
         Load a topology from the execution folder
         """
-        self.executor.load_dir()
+        (added_node_ids, added_link_ids, node_renamings) = self.network.load_dir({})
+        for node_id in added_node_ids:
+            node = self.network.get_node(node_id)
+            self.executor.add_node(node)
+        for link_id in added_link_ids:
+            link = self.network.get_link(link_id)
+            self.executor.add_link(link)
         self.empty = False
 
-    def save_zip(self, to_file: io.BufferedWriter=None):
+    def save_zip(self, to_file: io.BufferedWriter=None) ->Union[None,bytes]:
         """
         Save a topology to a binary stream
 
@@ -96,7 +109,7 @@ class Topology:
         Returns:
             if to_file is not provided, returns a bytes object containing the saved topology
         """
-        return self.executor.save(to_file)
+        return self.network.save_zip(to_file)
 
     def run(self, inject_input_values:Dict[str,Any]={}, output_listeners:Dict[str,Callable[[Any],None]]={}) -> bool:
         """
@@ -136,7 +149,7 @@ class Topology:
         Notes:
             the following keys will be understood by hyrrokkin based tools - version, description, authors
         """
-        self.executor.set_metadata(metadata)
+        self.network.set_metadata(metadata)
 
     def set_configuration(self, package_id: str, properties: dict):
         """
@@ -149,7 +162,11 @@ class Topology:
         self.dsu.set_package_properties(package_id, properties)
         self.empty = False
 
-    def add_node(self, node_id: str, node_type: str, properties: dict) -> str:
+
+
+
+    def add_node(self, node_id: str, node_type: str, properties: dict[str, JsonType]={},
+                 metadata:dict[str, JsonType]={}, x:int=0, y:int=0) -> str:
         """
         Add a node to the topology
 
@@ -157,12 +174,16 @@ class Topology:
             node_id: the node's unique identifier, must not already exist within the topology
             node_type: the type of the node, a string of the form package_id:node_type_id
             properties: dictionary containing the node's property names and values, must be JSON serialisable
+            metadata: a dictionary containing the new metadata
+            x: the new x-coordinate value
+            y: the new y-coordinate value
         """
-        if self.executor.get_node(node_id) is not None:
+        if self.network.get_node(node_id) is not None:
             raise InvalidNodeError(f"Node with id {node_id} already exists")
 
         self.dsu.set_node_properties(node_id, properties)
-        node = Node(node_id, node_type, x=0, y=0, metadata={})
+        node = Node(node_id, node_type, x=x, y=y, metadata=metadata)
+        self.network.add_node(node)
         self.executor.add_node(node)
         self.empty = False
         return node_id
@@ -174,11 +195,12 @@ class Topology:
         Args:
             node_id: the node's unique identifier
         """
-        if self.executor.get_node(node_id) is None:
+        if self.network.get_node(node_id) is None:
             raise InvalidNodeError(f"Node with id {node_id} does not exist")
+        self.network.remove_node(node_id)
         self.executor.remove_node(node_id)
 
-    def update_node_position(self, node_id, x, y):
+    def update_node_position(self, node_id:str, x:int, y:int):
         """
         Update a node's position
 
@@ -187,8 +209,7 @@ class Topology:
             x: the new x-coordinate value
             y: the new y-coordinate value
         """
-        node = self.executor.get_node(node_id)
-        node.move_to(x, y)
+        self.network.move_node(node_id, x, y)
 
     def get_node_property(self, node_id: str, property_name: str) -> JsonType:
         """
@@ -302,17 +323,17 @@ class Topology:
             InvalidLinkError: if the link cannot be added
         """
 
-        if self.executor.get_link(link_id) is not None:
+        if self.network.get_link(link_id) is not None:
             raise InvalidLinkError(f"Link with id {link_id} already exists")
 
-        from_node = self.executor.get_node(from_node_id)
+        from_node = self.network.get_node(from_node_id)
         if from_node is None:
             raise InvalidLinkError(f"{from_node_id} does not exist")
 
         from_node_type_name = from_node.get_node_type()
         from_node_type = self.schema.get_node_type(from_node_type_name)
 
-        to_node = self.executor.get_node(to_node_id)
+        to_node = self.network.get_node(to_node_id)
         if to_node is None:
             raise InvalidLinkError(f"{to_node_id} does not exist")
         to_node_type_name = to_node.get_node_type()
@@ -346,16 +367,17 @@ class Topology:
             raise InvalidLinkError(f"incompatible link types (from: {from_link_type}, to: {to_link_type})")
 
         if not from_node_type.output_ports[from_port].allows_multiple_connections():
-            if len(self.executor.get_outputs_from(from_node_id, from_port)) > 0:
+            if len(self.network.get_outputs_from(from_node_id, from_port)) > 0:
                 raise InvalidLinkError(
                     f"output port {from_node_id}/{from_port} is already connected and does not allow multiple connections")
 
         if not to_node_type.input_ports[to_port].allows_multiple_connections():
-            if len(self.executor.get_inputs_to(to_node_id, to_port)) > 0:
+            if len(self.network.get_inputs_to(to_node_id, to_port)) > 0:
                 raise InvalidLinkError(
                     f"input port {to_node_id}/{to_port} is already connected and does not allow multiple connections")
 
         link = Link(link_id, from_node_id, from_port, to_node_id, to_port, from_link_type)
+        self.network.add_link(link)
         self.executor.add_link(link)
 
     def remove_link(self, link_id: str):
@@ -365,9 +387,11 @@ class Topology:
         Args:
             link_id: the link's unique identifier
         """
-        if self.executor.get_link(link_id) is None:
+        if self.network.get_link(link_id) is None:
             raise InvalidNodeError(f"Link with id {link_id} does not exist")
-        self.executor.remove_link(link_id)
+        else:
+            self.network.remove_link(link_id)
+            self.executor.remove_link(link_id)
 
     def get_node_ids(self) -> list[str]:
         """
@@ -376,7 +400,7 @@ class Topology:
         Returns:
             list of node ids
         """
-        return self.executor.get_node_ids()
+        return self.network.get_node_ids()
 
     def get_node_type(self, node_id: str) -> tuple[str, str]:
         """
@@ -388,7 +412,7 @@ class Topology:
         Returns:
             tuple (package_id, node_type_id)
         """
-        node = self.executor.get_node(node_id)
+        node = self.network.get_node(node_id)
         node_type = node.get_node_type()
         return self.schema.split_descriptor(node_type)
 
@@ -402,7 +426,7 @@ class Topology:
         Returns:
             a dictionary describing the node
         """
-        node = self.executor.get_node(node_id)
+        node = self.network.get_node(node_id)
         d = {}
         d["node_id"] = node_id
         d["node_type"] = node.get_node_type()
@@ -422,7 +446,7 @@ class Topology:
         Returns:
             a dictionary describing the link
         """
-        link = self.executor.get_link(link_id)
+        link = self.network.get_link(link_id)
         msg = {}
         msg["link_id"] = link_id
         msg["link_type"] = link.get_link_type()
@@ -439,7 +463,8 @@ class Topology:
         Returns:
             a dictionary describing the topoology
         """
-        return self.executor.save_network_only()
+
+        return self.network.save()
 
     def get_node_metadata(self, node_id: str) -> dict[str, JsonType]:
         """
@@ -451,7 +476,7 @@ class Topology:
         Returns:
             A dictionary containing the metadata
         """
-        return self.executor.get_node(node_id).get_metadata()
+        return self.network.get_node(node_id).get_metadata()
 
     def update_node_metadata(self, node_id:str, metadata:dict[str,JsonType]):
         """
@@ -461,7 +486,7 @@ class Topology:
             node_id: the id of the node
             metadata: a dictionary containing the new metadata
         """
-        node = self.executor.get_node(node_id)
+        node = self.network.get_node(node_id)
         node.update_metadata(metadata)
 
     def get_link_ids(self) -> list[str]:
@@ -471,7 +496,7 @@ class Topology:
         Returns:
             list of link ids
         """
-        return self.executor.get_link_ids()
+        return self.network.get_link_ids()
 
     def get_link(self, link_id:str) -> tuple[str, str, str, str]:
         """
@@ -483,7 +508,7 @@ class Topology:
         Returns:
             tuple (from_node_id,from_port,to_node_id,to_port)
         """
-        link = self.executor.get_link(link_id)
+        link = self.network.get_link(link_id)
         return (link.from_node_id, link.from_port, link.to_node_id, link.to_port)
 
     def get_output_port_names(self, node_id: str) -> list[str]:
@@ -496,7 +521,7 @@ class Topology:
         Returns:
             list of output port names
         """
-        node = self.executor.get_node(node_id)
+        node = self.network.get_node(node_id)
         node_type = self.schema.get_node_type(node.get_node_type())
         return [name for (name, _) in node_type.get_output_ports()]
 
@@ -510,7 +535,7 @@ class Topology:
         Returns:
             list of input port names
         """
-        node = self.executor.get_node(node_id)
+        node = self.network.get_node(node_id)
         node_type = self.schema.get_node_type(node.get_node_type())
         return [name for (name, _) in node_type.get_input_ports()]
 
@@ -521,7 +546,7 @@ class Topology:
         Returns:
             A dictionary containing the metadata
         """
-        return self.executor.get_metadata()
+        return self.network.get_metadata()
 
     def get_node_properties(self, node_id: str) -> dict[str, JsonType]:
         """
@@ -546,3 +571,10 @@ class Topology:
             A dictionary containing the properties defined for that package
         """
         return self.dsu.get_package_properties(package_id)
+
+    def clear(self):
+        """
+        Remove all nodes and links from the topology
+        """
+        self.network.clear()
+        self.executor.clear()

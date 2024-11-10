@@ -17,13 +17,28 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import pickle
 
 class NumberstreamConfiguration:
 
     def __init__(self, services):
-        # the services API is similar to that provided to a node
-        # except that the reset_run method is not supported
-        self.services = services 
+        self.services = services
+        cache_data = services.get_data("prime_factors")
+        self.prime_factor_cache = pickle.loads(cache_data) if cache_data else {}
+        self.services.set_status_info(f"loaded cache ({len(self.prime_factor_cache)} items)")
+
+    def get_prime_factors(self, n):
+        if n in self.prime_factor_cache:
+            return self.prime_factor_cache[n]
+        else:
+            return None
+
+    def set_prime_factors(self, n, factors):
+        self.prime_factor_cache[n] = factors
+
+    def close(self):
+        self.services.set_data("prime_factors", pickle.dumps(self.prime_factor_cache))
+        self.services.set_status_info(f"saved cache ({len(self.prime_factor_cache)} items)")
 
 
 

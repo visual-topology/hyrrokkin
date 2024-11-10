@@ -37,7 +37,7 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
-                <li class="toctree-l1 current"><a class="reference internal current" href=".">Welcome to the Hyrrokkin documentation</a>
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Welcome to the Hyrrokkin documentation</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a>
         <ul>
@@ -45,25 +45,23 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#nodes-ports-and-links">Nodes, Ports and Links</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#packages">Packages</a>
+    <li class="toctree-l3"><a class="reference internal" href="#packages-and-package-configurations">Packages and Package Configurations</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#package-configuration-and-schema">Package Configuration and Schema</a>
+    <li class="toctree-l3"><a class="reference internal" href="#an-example-package">An Example Package</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#properties-data-and-the-node-service-api">Properties, data and the node service API</a>
+    <li class="toctree-l3"><a class="reference internal" href="#package-schema">Package Schema</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#clients">Clients</a>
+    <li class="toctree-l3"><a class="reference internal" href="#the-node-constructor-and-the-run-method">The node constructor, and the run method</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#node-lifecycle-reset_run-and-request_run">Node lifecycle - reset_run and request_run</a>
+    <li class="toctree-l3"><a class="reference internal" href="#persisting-node-properties">Persisting node properties</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#reporting-status">Reporting status</a>
+    <li class="toctree-l3"><a class="reference internal" href="#clients-and-updating-status">Clients and updating status</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#understanding-connections">Understanding connections</a>
+    <li class="toctree-l3"><a class="reference internal" href="#node-lifecycle-the-reset_run-connections_changed-and-close-methods">Node lifecycle - the reset_run, connections_changed and close methods.</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#obtaining-the-configuration-instance">Obtaining the configuration instance</a>
+    <li class="toctree-l3"><a class="reference internal" href="#defining-the-package-configuration">Defining the package configuration</a>
     </li>
         </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#defining-a-package-schema-using-json">Defining a Package schema using JSON</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#creating-loading-and-running-topologies-using-the-hyrrokkin-api">Creating, loading and running topologies using the Hyrrokkin API</a>
         <ul>
@@ -128,237 +126,296 @@
                 <h1 id="welcome-to-the-hyrrokkin-documentation">Welcome to the Hyrrokkin documentation</h1>
 <h2 id="introduction">Introduction</h2>
 <h3 id="topology">Topology</h3>
-<p>Hyrrokkin is a library which handles the execution of computational graphs, which are termed topologies.  Each topology consists of executable components called nodes.  </p>
+<p>Hyrrokkin is a library which manages the execution of computational graphs, which are termed topologies.  </p>
+<p>Each topology consists of executable components called nodes.  </p>
 <h3 id="nodes-ports-and-links">Nodes, Ports and Links</h3>
-<p>Nodes are assoicated with a class which implements the node's behaviour, most notably the class will implement a <code>run</code> method which transforms a set of values recieved through that node's input ports into a set of values sent out via the node's output ports. </p>
-<pre><code class="language-py">class MyNode:
-
-  def run(inputs):
-    # inputs is a dictionary of K,V pairs where K is the names of an input ports 
-    # and V a list of values passed to that port, collected from the values 
-    # of other nodes output ports that are connected to that input port. 
-
-    # process the inputs and return a dictionary of K,V pairs where K is the name of an output port and V is the value output at that port  
-</code></pre>
-<p>So, nodes communicate with each other via their ports - a Node defines zero or more input ports which are used to read in data, and zero our more output ports which are used to output data after the node is run.  </p>
+<p>Nodes are associated with a class which implements the node's behaviour, most notably the class will implement a <code>run</code> method which transforms a set of values received through that node's input ports into a set of values sent out via the node's output ports. </p>
 <p>A topology will also contain links, which connect the output port of one node to the input port of another.</p>
-<h3 id="packages">Packages</h3>
-<p>Each node in a topology is an instance of a particular Node Type which defines the class which implements the node's functionality, and the names and Link Types of each input and output port associated with that node.  An output port of one node can only be connected to an input port of another node can only be connected by a link if they share the same Link Type.</p>
-<p>Node Types and Link Types are bundled together into a Package containing related functionality.  As well as the definition's of node and link types, a package is also described by:</p>
+<h3 id="packages-and-package-configurations">Packages and Package Configurations</h3>
+<p>Each node in a topology is an instance of a particular node type which defines the class which implements the node's functionality, and the names and Link Types of each input and output port associated with that node.  An output port of one node can only be connected to an input port of another node can only be connected by a link if they share the same Link Type.</p>
+<p>Node types and link types are bundled together into a Package containing related functionality. </p>
+<p>A package may also define a package configuration which can be accessed by all nodes.    </p>
+<h3 id="an-example-package">An Example Package</h3>
+<p>Consider a simple example package:</p>
 <ul>
-<li>
-<p>metadata including a name and description describing the purpose of the package</p>
-</li>
-<li>
-<p>Optionally, a Configuration class which implements the package's behaviour</p>
-</li>
+<li>NumberInputNode</li>
 </ul>
-<h3 id="package-configuration-and-schema">Package Configuration and Schema</h3>
-<p>Each package can define a configuration class - all node instances within a topology that belong to the package, may access a single shared instance of this Configuration class.  Services and behaviours that are common to the set of nodes within a package may be conveniently delegated to this configuration class.</p>
-<p>Each Package, and the Link Types, Node Types and optional Configuration it contains, is specified in a JSON formatted document, the schema of that Package.  </p>
-<h3 id="properties-data-and-the-node-service-api">Properties, data and the node service API</h3>
-<p>When a node or configuration is constructed, the constructor is passed a service API object, providing various useful services.  Most usefully, these services allow access to persistent storage: data and properties.</p>
-<p>Nodes and Configurations may read and write properties.  Properties are represented by key-value pairs, where a key is a unique string and a value is any JSON-serialisable object.  Properties are usually parameters which determine the behaviour of the run method.</p>
-<p>In the following example, we consider a node which expects numeric input values to its input port <code>data_in</code>, sums them and then adds a constant value to produce a value which is output on an output port <code>data_out</code>.</p>
-<pre><code class="language-py">class NumberSumNode:
+<p>Stores and outputs an integer value via its output port <code>data_out</code>, allowing this nuber to be updated by clients </p>
+<ul>
+<li>PrimeFactorsNode</li>
+</ul>
+<p>Expects numeric input values via its input port <code>data_in</code>, computes a list of its prime factors which are output via port <code>data_out</code>.</p>
+<ul>
+<li>NumberDisplayNode</li>
+</ul>
+<p>Receives a list of numbers via its input ports <code>integer_data_in</code> amd <code>integerlist_data_in</code>, and communicates those to clients </p>
+<h3 id="package-schema">Package Schema</h3>
+<p>Each package can define a configuration class - all node instances within a topology that belong to the package.</p>
+<p>Each Package, and the Link Types, Node Types it contains, is specified in a JSON formatted document that represents the schema of that Package.  </p>
+<pre><code class="language-json">{
+    &quot;id&quot;: &quot;numberstream&quot;,
+    &quot;metadata&quot;: {
+        &quot;name&quot;: &quot;Number Stream&quot;,
+        &quot;version&quot;: &quot;0.0.1&quot;,
+        &quot;description&quot;: &quot;a small example package for manipulating numbers&quot;
+    },
+    &quot;configuration&quot;: {
+        &quot;classname&quot;: &quot;numberstream_configuration.NumberstreamConfiguration&quot;
+    },
+    &quot;node_types&quot;: {
+        &quot;number_input_node&quot;: {
+            &quot;metadata&quot;: {
+                &quot;name&quot;: &quot;Number Input Node&quot;,
+                &quot;description&quot;: &quot;Define an integer value&quot;
+            },
+            &quot;output_ports&quot;: {
+                &quot;data_out&quot;: {
+                    &quot;link_type&quot;: &quot;numberstream:integer&quot;
+                }
+            },
+            &quot;classname&quot;: &quot;nodes.number_input_node.NumberInputNode&quot;
+        },
+        &quot;prime_factors_node&quot;: {
+            &quot;metadata&quot;: {
+                &quot;name&quot;: &quot;Prime Factors Node&quot;,
+                &quot;description&quot;: &quot;Calculate the prime factors of each input number&quot;
+            },
+            &quot;input_ports&quot;: {
+                &quot;data_in&quot;: {
+                    &quot;link_type&quot;: &quot;numberstream:integer&quot;,
+                    &quot;allow_multiple_connections&quot;: false
+                }
+            },
+            &quot;output_ports&quot;: {
+                &quot;data_out&quot;: {
+                    &quot;link_type&quot;: &quot;numberstream:integerlist&quot;
+                }
+            },
+            &quot;classname&quot;: &quot;nodes.prime_factors_node.PrimeFactorsNode&quot;
+        },
+        &quot;number_display_node&quot;: {
+            &quot;metadata&quot;: {
+                &quot;name&quot;: &quot;Number Display Node&quot;,
+                &quot;description&quot;: &quot;Display all input numbers&quot;
+            },
+            &quot;input_ports&quot;: {
+                &quot;integer_data_in&quot;: {
+                    &quot;link_type&quot;: &quot;numberstream:integer&quot;
+                },
+                &quot;integerlist_data_in&quot;: {
+                    &quot;link_type&quot;: &quot;numberstream:integerlist&quot;
+                }
+            },
+            &quot;output_ports&quot;: {
+            },
+            &quot;classname&quot;: &quot;nodes.number_display_node.NumberDisplayNode&quot;
+        }
+    },
+    &quot;link_types&quot;: {
+        &quot;integer&quot;: {
+            &quot;metadata&quot;: {
+                &quot;name&quot;: &quot;Integer&quot;,
+                &quot;description&quot;: &quot;This type of link carries integer values&quot;
+            }
+        },
+        &quot;integerlist&quot;: {
+            &quot;metadata&quot;: {
+                &quot;name&quot;: &quot;IntegerList&quot;,
+                &quot;description&quot;: &quot;This type of link carries values that are lists of integers&quot;
+            }
+        }
+    }
+}
+</code></pre>
+<p>When refering to a link type, the package id should be used as a prefix, <code>&lt;package-id&gt;:&lt;link-type-id&gt;</code>.  In this example, <code>numberstream:integer</code> refers to the link type <code>number</code> defined in the <code>numberstream</code> example package.  This allows packages to refer to link types defined in other packages when defining nodes.</p>
+<p>Each Node Type is associated with the following information:</p>
+<ul>
+<li><code>classname</code> indicates which class implements the node's behaviour</li>
+<li><code>input_ports</code> and <code>output_ports</code> specify the names and link types of ports</li>
+<li>By default, ports can accept multiple connections unless the <code>allow_multiple_connections</code> is set to false.</li>
+<li><code>metadata</code> provides descriptive information </li>
+</ul>
+<h3 id="the-node-constructor-and-the-run-method">The node constructor, and the run method</h3>
+<p>When a node is constructed, the constructor is passed a service API object, providing various useful services.  </p>
+<pre><code class="language-py">class PrimeFactorsNode:
 
-    def __init__(self, services):
+    def __init__(self,services):
         self.services = services
 
-        # get the constant to be used by this node, default to 0 if not already defined
-        self.constant = services.get_property(&quot;constant&quot;,0) 
-        # update the property
-        services.set_property(&quot;constant&quot;,self.constant)
+    def find_prime_factors(self,n):
+        &quot;&quot;&quot;Return a list of prime factors for input value n&quot;&quot;&quot;
+        ...
 
     def run(self, inputs):
         input_values = inputs.get(&quot;data_in&quot;,[])
-        output_value  = sum(input_values)+self.constant
-        return { &quot;data_out&quot;: output_value }
+        if len(input_values):
+            value = input_values[0]
+            if not isinstance(value,int):
+                raise Exception(&quot;input value {value} is not integer&quot;)
+            if value &lt; 2:
+                prime_factors = [] # no solution
+            else:
+                prime_factors = self.find_prime_factors(value)
+            return { &quot;data_out&quot;:prime_factors }
 </code></pre>
 <p>As well as the <code>get_property</code> and <code>set_property</code> methods, the services API also provides methods <code>get_data</code> and <code>set_data</code> which work in a similar way - nodes may use these to read and write data represetned as a sequence of bytes.  </p>
 <p>In general nodes may use data to persist the results of computation, for example, a machine learning model that the node has trained and then serialised to a sequence of bytes.</p>
-<h3 id="clients">Clients</h3>
-<p>Clients are external programs which can communicate with configurations and nodes.  Communication happens via message passing, where each message consisting of zero or more values. To participate, nodes implement open_client and close_client methods.  In the following simple example, the node expects messages consisting of a single value, used to refresh the constant applied by the node.  When the node is run, we can send the new output value to any attached clients, as well as through the output port</p>
-<pre><code class="language-py">
-class NumberSumNode:
-
-  def __init__(self,services):
-      self.services = services
-      self.constant = services.get_property(&quot;constant&quot;,0) 
-      services.set_property(&quot;constant&quot;,self.constant)
-      self.clients = {}
-
-  def open_client(self,client_id, client_options, send_fn):
-      # called when a new client, assigned unique id client_id, is opened
-      # send_fn is used to transmit values to the new client
-      self.clients[client_id] = send_fn
-      # return a function that will be called to recieve a message sent by this client
-      return lambda *msg: self.__handle_message(client_id, *msg)
-
-  def __handle_message(self,client_id,*msg):
-      # called when a message is recieved from a client... update the constant
-      new_constant = msg[0]
-      self.constant = new_constant
-      self.services.set_property(&quot;constant&quot;,self.constant)
-
-  def close_client(self, client_id):
-      # called when a client is closed
-      del self.clients[client_id]
-
-  def run(self, inputs):
-        input_values = inputs.get(&quot;data_in&quot;,[])
-        output_value  = sum(input_values)+self.constant
-        # notify all attached clients of the new output value
-        for client_id in self.clients:
-            self.clients[client_id](output_value)
-        return { &quot;data_out&quot;: output_value }
-</code></pre>
-<p>A normal use of clients is to allow interaction with the nodes in a live topology, which may influence the properties and data associated with a node, and lead to the node being re-run.</p>
-<h3 id="node-lifecycle-reset_run-and-request_run">Node lifecycle - reset_run and request_run</h3>
-<p>When a topology is loaded, or when any upstream node in the topology is re-run, the node's inputs will be collected and its run method will be called.  But, before this happens, the node's reset_run method will be called, if it is implemented.  A node can implement this method to inform any clients that the node's current results are invalid and the node will soon be re-run.  </p>
-<pre><code class="language-py">
-class NumberSumNode:
-
-  def __init__(self,services):
-      self.services = services
-      self.constant = services.get_property(&quot;constant&quot;,0) 
-      services.set_property(&quot;constant&quot;,self.constant)
-      self.clients = {}
-
-  def open_client(self,client_id, client_options, send_fn):
-      # called when a new client, assigned unique id client_id, is opened
-      # send_fn is used to transmit values to the new client
-      self.clients[client_id] = send_fn
-      # return a function that will be called to recieve a message sent by this client
-      return lambda *msg: self.__handle_message(client_id, *msg)
-
-  def __handle_message(self,client_id,*msg):
-      new_constant = msg[0]
-      if new_constant != self.constant:
-          # because the constant has changed we need to re-run this node 
-          self.constant = new_constant
-          self.service.request_run()
-      self.services.set_property(&quot;constant&quot;,self.constant)
-
-  def close_client(self, client_id):
-      del self.clients[client_id]
-
-  def run(self, inputs):
-      input_values = inputs.get(&quot;data_in&quot;,[])
-      output_value  = sum(input_values)+self.constant
-      for client_id in self.clients:
-          self.clients[client_id](output_value)
-          return { &quot;data_out&quot;: output_value }
-
-  def reset_run(self):
-      # called when upstream changes mean that the node needs to be run
-      # inform clients that any previous values sent are now invalid by 
-      # sending them a None value
-      for client_id in self.clients:
-          self.clients[client_id](None)
-</code></pre>
-<p>The <code>reset_run</code> method is usually called as soon as it is known that the node's <code>run</code> method will need to be called. </p>
-<p>Another way in which the node is re-run is when a node itself invokes the service API  <code>request_run</code> method, often in response to the interaction between a node and its clients.  In this example, this happens when a client sends a new constant value for the node to use.</p>
-<h3 id="reporting-status">Reporting status</h3>
-<p>A number of service API methods allow the node to report its status, classified as either info, warning or error, and also to clear any previously reported status.</p>
-<pre><code class="language-py">
-class NumberSumNode:
-
-  def __init__(self,services):
-      self.services = services
-      self.constant = services.get_property(&quot;constant&quot;,0) 
-      services.set_property(&quot;constant&quot;,self.constant)
-      self.clients = {}
-
-  def open_client(self,client_id, client_options, send_fn):
-      self.clients[client_id] = send_fn
-      return lambda *msg: self.__handle_message(client_id, *msg)
-
-  def __handle_message(self,client_id,*msg):
-      new_constant = msg[0]
-      if not (isinstance(new_constant,int) or isinstance(new_constant,float)):
-          # warn that the client has provided an invalid value
-          self.services.set_status_warning(&quot;New constant requested by client is neither integer nor float, ignoring&quot;) 
-      if new_constant != self.constant:
-          self.constant = new_constant
-          self.services.set_property(&quot;constant&quot;,self.constant)
-          self.service.request_run()
-          # inform that the constant has been updated
-          self.services.set_status_info(&quot;Constant updated, awaiting re-run&quot;)
-
-  def close_client(self, client_id):
-      del self.clients[client_id]
-
-  def run(self, inputs):
-      try:
-          input_values = inputs.get(&quot;data_in&quot;,[])
-          output_value  = sum(input_values)+self.constant
-          for client_id in self.clients:
-              self.clients[client_id](output_value)
-              return { &quot;data_out&quot;: output_value }
-          # clear the status after a successful execution    
-          self.services.clear_status()
-      except Exception as ex:
-          # something has gone wrong, set the status to error
-          self.services.set_status_error(f&quot;Run failed due to {str(ex)}&quot;) 
-          # raising an exception within the run method indicates that the node has 
-          # failed 
-          raise
-
-  def reset_run(self):
-      for client_id in self.clients:
-          self.clients[client_id](None)
-</code></pre>
-<h3 id="understanding-connections">Understanding connections</h3>
-<p>When the topology is updated, the number of links connected to a node's input and output ports may be updated.  A node may implement a <code>connections_changed</code> method to recieve notifications providing this information when a topology is first loaded and later, if these connections change:</p>
-<pre><code class="language-py">
-class NumberSumNode:
-
-    ...
-
-    def connections_changed(self, input_connection_counts, output_connection_counts):
-        if self.input_connection_counts[&quot;data_in&quot;] == 0:
-            self.services.set_status_warning(&quot;No inputs are currently connected&quot;)
-</code></pre>
-<h3 id="obtaining-the-configuration-instance">Obtaining the configuration instance</h3>
-<p>If the node belongs to a package which defines a configuration class, the node can obtain an instance of that class which is shared amonst all nodes belonging to that package.  In the example below, a configuration class controls whether nodes are able to be modified by clients or if they are read-only.</p>
-<pre><code class="language-py">
-class NumberSumNode:
-
-    ...
-    def __init__(self,services):
-        self.services = services
-        self.constant = services.get_property(&quot;constant&quot;,0) 
-        services.set_property(&quot;constant&quot;,self.constant)
-        self.clients = {}
-        # if no configruation class is defined for this node's package, 
-        # get_configuration() will return None
-        self.configuration = services.get_configuration()
-        self.is_readonly = self.configuration.get_is_readonly()
-
-    def open_client(self,client_id, client_options, send_fn):
-        self.clients[client_id] = send_fn
-        if self.is_readonly:
-            return None # ignore messages from this client 
-        else:
-            return lambda *msg: self.__handle_message(client_id, *msg)
-
-    ...
-
-</code></pre>
-<p>The configuration class is implemented in a similar way to a node</p>
-<pre><code class="language-py">class NumberstreamConfiguration:
+<h3 id="persisting-node-properties">Persisting node properties</h3>
+<p>Consider a node which supplies an integer values via an output port <code>data_out</code></p>
+<pre><code>class NumberInputNode:
 
     def __init__(self, services):
-        # the services API is similar to that provided to a node
-        # except that the reset_run method is not supported
-        self.services = services 
+        self.services = services
 
-    def get_is_readonly(self):
-        return self.services.get_property(&quot;readonly&quot;,False)
+    def open_client(self,client_id, client_options, client_service):
+        client_service.set_message_handler(lambda *msg: self.__handle_message(client_id, *msg))
+
+    def __handle_message(self,client_id, value):
+        if not isinstance(value,int):
+            # warn that the client has provided an invalid value
+            self.services.set_status_warning(&quot;New value passed by client is not integer&quot;)
+        else:
+            self.services.set_property(&quot;value&quot;, value)
+            self.services.request_run()
+
+    async def run(self, inputs):
+        value = self.services.get_property(&quot;value&quot;, 10)
+        return { &quot;data_out&quot;: value }
 </code></pre>
-<p>The methods <code>run</code>, <code>reset_run</code> and <code>connections_changed</code> methods are also not used for configuration classes - configurations have no connections and cannot be run.  They can, however, communicate with clients in the same way that nodes can, and so the same methods <code>open_client</code> and <code>close_client</code> described above for nodes can also be implemented for configurations. </p>
-<p>Similarly, the service API for configurations is the same as that for nodes, except that the <code>request_run</code> method is not present.  Configurations can read and write data and properties, and issue status updates in the same way that nodes can.</p>
+<p>The integer value is stored in a <code>value</code> property and the services api <code>get_property(name,value)</code> and <code>set_property(name,value)</code> are used to retrieve and update the value.</p>
+<p>Property names must be strings and values must be JSON-serialisable objects.</p>
+<p>The services API also provides methods to get and set binary data: <code>get_data(name,value)</code> and <code>set_data(name,value)</code> where values of type bytes.</p>
+<p>When the node is run, its stored value is output on port <code>data_out</code></p>
+<h3 id="clients-and-updating-status">Clients and updating status</h3>
+<p>Clients are external routines which can communicate with nodes.  Communication happens via message passing, where each message consisting of zero or more values. </p>
+<p>To participate, nodes implement <code>open_client</code> and <code>close_client</code> methods.  In the example above, the <code>NumberInputNode</code> expects messages consisting of a single value, used to refresh the number stored by the node.  </p>
+<p>Clients allow interaction with the nodes in a topology that is run interactively.</p>
+<p>In the <code>NumberInputNode</code> example, once the node updates the value it stores it then calls the service API <code>request_run</code>, indicating that the outputs from the node have changed.  The framework will ensure that the run method will be called soon.  </p>
+<p>If the value passed by a client is not an integer, the node will issue a warning via the service api <code>set_status_warning</code>.  The following set of service APIs related to status updates:</p>
+<table>
+<thead>
+<tr>
+<th>service API</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>set_status_info(msg)</td>
+<td>sets the status as INFORMATIONAL accompanied by message <code>msg</code></td>
+</tr>
+<tr>
+<td>set_status_warning(msg)</td>
+<td>sets the status as WARNING accompanied by message <code>msg</code></td>
+</tr>
+<tr>
+<td>set_status_error(msg)</td>
+<td>sets the status as ERROR accompanied by message <code>msg</code></td>
+</tr>
+<tr>
+<td>clear_status()</td>
+<td>clears the status associated with this node</td>
+</tr>
+</tbody>
+</table>
+<h3 id="node-lifecycle-the-reset_run-connections_changed-and-close-methods">Node lifecycle - the <code>reset_run</code>, <code>connections_changed</code> and <code>close</code> methods.</h3>
+<p>The <code>NumberDisplayNode</code> implements some code to collect input values and report thm to any connected clients.</p>
+<p>When a topology is loaded, or when any upstream node in the topology is re-run, the node's inputs will be collected and its run method will be called.  But, before this happens, the node's <code>reset_run</code> method will be called, if it is implemented.  A node can implement this method to inform any clients that the node's current results are invalid and the node will soon be re-run.  </p>
+<pre><code class="language-py">import json
+
+class NumberDisplayNode:
+
+    def __init__(self, services):
+        self.services = services
+        self.clients = {}
+
+    def connections_changed(self, input_connection_counts, output_connection_counts):
+        nr_integer_inputs = input_connection_counts.get(&quot;integer_data_in&quot;,0)
+        nr_integerlist_inputs = input_connection_counts.get(&quot;integerlist_data_in&quot;,0)
+        self.services.set_status_info(f&quot;{nr_integer_inputs} input integers, {nr_integerlist_inputs} input integerlists&quot;)
+
+    def reset_run(self):
+        for client_id in self.clients:
+            self.clients[client_id].send_message(None)
+
+    def run(self, inputs):
+        input_values = inputs.get(&quot;integer_data_in&quot;,[])+inputs.get(&quot;integerlist_data_in&quot;,[])
+        txt = json.dumps(input_values)
+        self.services.set_status_info(txt)
+        for client_service in self.clients.values():
+            client_service.send_message(txt)
+
+    def open_client(self, client_id, client_options, client_service):
+        self.clients[client_id] = client_service
+
+    def close_client(self, client_id):
+        del self.clients[client_id]
+
+    def close(self):
+        pass
+</code></pre>
+<p>The <code>reset_run</code> method is called as soon as the framework is aware that the node's <code>run</code> method will need to be called. </p>
+<p>When the topology is loaded or later updated, the number of links connected to a node's input and output ports may change.  </p>
+<p>A node may implement a <code>connections_changed</code> method to receive notifications providing this information when a topology is first loaded and later, if these connections change:</p>
+<p>A node may implement a <code>close</code> method to receive notifications when the node is removed from a topology</p>
+<h3 id="defining-the-package-configuration">Defining the package configuration</h3>
+<p>The package configuration is defined in a similar way to a node, with a constructor accepting a services object.</p>
+<p>In this example, the configuration can offer a shared service to cache factorisations, that can be accessed by all nodes within the topology.</p>
+<pre><code class="language-py">import pickle
+
+class NumberstreamConfiguration:
+
+    def __init__(self, services):
+        self.services = services
+        cache_data = services.get_data(&quot;prime_factors&quot;)
+        self.prime_factor_cache = pickle.loads(cache_data) if cache_data else {}
+        self.services.set_status_info(f&quot;loaded cache ({len(self.prime_factor_cache)} items)&quot;)
+
+    def get_prime_factors(self, n):
+        if n in self.prime_factor_cache:
+            return self.prime_factor_cache[n]
+        else:
+            return None
+
+    def set_prime_factors(self, n, factors):
+        self.prime_factor_cache[n] = factors
+
+    def close(self):
+        self.services.set_data(&quot;prime_factors&quot;, pickle.dumps(self.prime_factor_cache))
+        self.services.set_status_info(f&quot;saved cache ({len(self.prime_factor_cache)} items)&quot;)
+</code></pre>
+<p>The configuration is then accessed by node#s via the get_configuration service method.  Completing the definition of <code>PrimeFactorsNode</code>:</p>
+<pre><code class="language-py">class PrimeFactorsNode:
+
+    ...
+
+    def is_prime(self,n):
+        root = int(math.sqrt(n))
+        for i in range(2, root + 1):
+            if n % i == 0:
+                return False
+        return True
+
+    def find_prime_factors(self,n):
+        factors = self.services.get_configuration().get_prime_factors(n) or []
+        if not factors:
+            i = 2
+            r = n
+            while True:
+                if r % i == 0:
+                    factors.append(i)
+                    r //= i
+                    if self.is_prime(r):
+                        break
+                else:
+                    i += 1
+            if r &gt; 1:
+                factors.append(r)
+            assert (reduce(lambda x, y: x * y, factors, 1) == n and all(self.is_prime(f) for f in factors))
+            self.services.get_configuration().set_prime_factors(n, factors)
+        return factors
+    ...
+</code></pre>
 <p>For more details on the methods that a node or configuration can implement, see</p>
 <ul>
 <li><a href="node_api/">Node abstract base class API documentation</a></li>
@@ -369,112 +426,21 @@ class NumberSumNode:
 <li><a href="node_service_api/">Node services API documentation</a></li>
 <li><a href="configuration_service_api/">Configuration API documentation</a></li>
 </ul>
-<h2 id="defining-a-package-schema-using-json">Defining a Package schema using JSON</h2>
-<p>A package is defined by a schema, written in JSON</p>
-<p>Each schema starts with some metadata, in particular a unique idenfifier for the package:</p>
-<pre><code class="language-json">{
-    &quot;id&quot;: &quot;numberstream&quot;,
-    &quot;metadata&quot;: {
-        &quot;name&quot;: &quot;Number Stream&quot;,
-        &quot;version&quot;: &quot;0.0.1&quot;,
-        &quot;description&quot;: &quot;package for generating and manipulating streams of numbers&quot;
-    },
-    ...
-}
-</code></pre>
-<p>Next we define the configuration:</p>
-<pre><code class="language-json">{
-    ...
-    &quot;dependencies&quot;: [],
-    &quot;configuration&quot;: {
-        &quot;classname&quot;: &quot;numberstream_configuration.NumberstreamConfiguration&quot;
-    },
-    ...
-}
-</code></pre>
-<p>Now we introduce the node types, specifying some metadata, the classname, and the definition of any import and output ports:</p>
-<pre><code class="language-json">{   
-    ...
-    &quot;node_types&quot;: {
-        &quot;number_input_node&quot;: {
-            &quot;metadata&quot;: {
-                &quot;name&quot;: &quot;Input Number Node&quot;,
-                &quot;description&quot;: &quot;Input a number&quot;
-            },
-            &quot;output_ports&quot;: {
-                &quot;data_out&quot;: {
-                    &quot;link_type&quot;: &quot;numberstream:number&quot;
-                }
-            },
-            &quot;classname&quot;: &quot;nodes.number_input_node.NumberInputNode&quot;
-        },
-        &quot;sum_node&quot;: {
-            &quot;metadata&quot;: {
-                &quot;name&quot;: &quot;Number Sum&quot;,
-                &quot;description&quot;: &quot;Sum any input number(s) received&quot;
-            },
-            &quot;input_ports&quot;: {
-                &quot;data_in&quot;: {
-                    &quot;link_type&quot;: &quot;numberstream:number&quot;
-                }
-            },
-            &quot;output_ports&quot;: {
-                &quot;data_out&quot;: {
-                    &quot;link_type&quot;: &quot;numberstream:number&quot;
-                }
-            },
-            &quot;classname&quot;: &quot;nodes.sum_node.SumNode&quot;
-        },
-         &quot;number_display&quot;: {
-            &quot;metadata&quot;: {
-                &quot;name&quot;: &quot;Number Display&quot;,
-                &quot;description&quot;: &quot;Display any received number(s)&quot;
-            },
-            &quot;input_ports&quot;: {
-                &quot;data_in&quot;: {
-                    &quot;link_type&quot;: &quot;numberstream:number&quot;,
-                    &quot;allow_multiple_connections&quot;: false
-                }
-            },
-            &quot;output_ports&quot;: {
-            },
-            &quot;classname&quot;: &quot;nodes.number_display_node.NumberDisplayNode&quot;
-        }
-    },
-    ...
-}
-</code></pre>
-<p>When defining an input or output port for a node type, the number of connections that can be made to that port can be limited to 1 by specifying <code>allow_multiple_connections:false</code>.</p>
-<p>Finally the definitions of any link types associated with any input and output ports are declared.  In this simple example, only one link type is used:</p>
-<pre><code class="language-json">{
-    ...
-    &quot;link_types&quot;: {
-        &quot;number&quot;: {
-            &quot;metadata&quot;: {
-                &quot;name&quot;: &quot;Number&quot;,
-                &quot;description&quot;: &quot;Carry a single number&quot;
-            }
-        }
-    }
-}
-</code></pre>
-<p>When refering to a link type, the package id should be used as a prefix, <code>&lt;package-id&gt;:&lt;link-type-id&gt;</code>.  In this example, <code>numberstream:number</code> refers to the link type <code>number</code> defined in the <code>numberstream</code> example package.  This allows packages to refer to link types defined in other packages when defining nodes.</p>
 <h2 id="creating-loading-and-running-topologies-using-the-hyrrokkin-api">Creating, loading and running topologies using the Hyrrokkin API</h2>
 <p>Hyrrokkin provides an API for creating, running and loading and saving topologies</p>
 <pre><code class="language-py">from hyrrokkin.api.topology import Topology
 
 # provide the resource path to the package containing the schema file
-numberstream_package = &quot;hyrrokkin_example_packages.numberstream&quot;
+numberstream_package = &quot;hyrrokkin.example_packages.numberstream&quot;
 
 t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
-t.set_metadata({&quot;name&quot;:&quot;test_topology&quot;)
-t.set_configuration_property(&quot;numberstream&quot;,&quot;readonly&quot;,False)
-t.add_node(&quot;n0&quot;, &quot;numberstream:number_input_node&quot;, {&quot;value&quot;:99})
-t.add_node(&quot;n1&quot;, &quot;numberstream:sum_node&quot;, {&quot;constant&quot;:42})
-t.add_node(&quot;n2&quot;, &quot;numberstream:number_display_node&quot;, {})
+
+t.add_node(&quot;n0&quot;, &quot;numberstream:number_input_node&quot;, properties={&quot;value&quot;: 99})
+t.add_node(&quot;n1&quot;, &quot;numberstream:prime_factors_node&quot;)
+t.add_node(&quot;n2&quot;, &quot;numberstream:number_display_node&quot;)
 
 t.add_link(&quot;l0&quot;, &quot;n0&quot;, &quot;data_out&quot;, &quot;n1&quot;, &quot;data_in&quot;)
-t.add_link(&quot;l1&quot;, &quot;n1&quot;, &quot;data_out&quot;, &quot;n2&quot;, &quot;data_in&quot;)
+t.add_link(&quot;l1&quot;, &quot;n1&quot;, &quot;data_out&quot;, &quot;n2&quot;, &quot;integerlist_data_in&quot;)
 t.run()
 </code></pre>
 <p>The same topology can be expressed using a YAML file</p>
@@ -489,29 +455,26 @@ nodes:
     properties:
       value: 99
   n1:
-    type: numberstream:number_sum_node
-    properties:
-      constant: 42
+    type: numberstream:prime_factors_node
   n2:
     type: numberstream:number_display_node
-    properties: {}
 links:
 - n0:data_out =&gt; n1:data_in
-- n1:data_out =&gt; n2:data_in
+- n1:data_out =&gt; n2:integerlist_data_in
 </code></pre>
 <p>This can then be imported using the following API calls</p>
 <pre><code class="language-py">from hyrrokkin.api.topology import Topology
 from hyrrokkin.utils.yaml_importer import import_from_yaml
 
 # provide the resource path to the package containing the schema file
-numberstream_package = &quot;hyrrokkin_example_packages.numberstream&quot;
+numberstream_package = &quot;hyrrokkin.example_packages.numberstream&quot;
 
 t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
 with open(&quot;topology.yaml&quot;) as f:
     import_from_yaml(t,f)
 t.run()
 </code></pre>
-<p>Note that in the links section of the YAML file, where nodes have only one input or output port, the port name can be omitted:</p>
+<p>Note that in the links section of the YAML file, where nodes have only one input or output port, the port name can be omitted in the links section:</p>
 <pre><code class="language-yaml">metadata:
   name: test topology
 configuration:
@@ -520,14 +483,14 @@ nodes:
   ...
 links:
 - n0 =&gt; n1
-- n1 =&gt; n2
+- n1 =&gt; n2:integerlist_data_in
 </code></pre>
 <h3 id="saving-and-loading-topologies">Saving and loading topologies</h3>
 <p>A topology including its properties and data can be saved to and loaded from a serialised zip format file, using the following API calls.  Saving first:</p>
 <pre><code class="language-py">from hyrrokkin.api.topology import Topology
 
 # provide the resource path to the package containing the schema file
-numberstream_package = &quot;hyrrokkin_example_packages.numberstream&quot;
+numberstream_package = &quot;hyrrokkin.example_packages.numberstream&quot;
 
 t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
 # create or import the topology
@@ -539,7 +502,7 @@ with open(&quot;topology.zip&quot;,&quot;wb&quot;) as f:
 <pre><code class="language-py">from hyrrokkin.api.topology import Topology
 
 # provide the resource path to the package containing the schema file
-numberstream_package = &quot;hyrrokkin_example_packages.numberstream&quot;
+numberstream_package = &quot;hyrrokkin.example_packages.numberstream&quot;
 
 t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
 with open(&quot;topology.zip&quot;,&quot;rb&quot;) as f:
@@ -551,7 +514,7 @@ t.run()
 from hyrrokkin.utils.yaml_exporter import export_to_yaml
 
 # provide the resource path to the package containing the schema file
-numberstream_package = &quot;hyrrokkin_example_packages.numberstream&quot;
+numberstream_package = &quot;hyrrokkin.example_packages.numberstream&quot;
 
 t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
 with open(&quot;topology.zip&quot;,&quot;rb&quot;) as f:
@@ -566,23 +529,32 @@ with open(&quot;topology.yaml&quot;,&quot;w&quot;) as f:
 <h2 id="loading-saving-and-running-topologies-using-topology_runner-cli">loading, saving and running topologies using topology_runner CLI</h2>
 <p>The Hyrrokkin package will install a <code>topology_runner</code> CLI command.  Some typical usages include:</p>
 <p>Import a topology from zip and run it:</p>
-<pre><code class="language-bash">topology_runner --package hyrrokkin_example_packages.numberstream --execution-folder /tmp/execution_test --import topology.zip --run
+<pre><code class="language-bash">topology_runner --package hyrrokkin.example_packages.numberstream \      
+                --execution-folder /tmp/execution_test \
+                --import topology.zip --run
 </code></pre>
 <p>Import a topology from yaml, run it and save the topology (including data) to a zip file:</p>
-<pre><code class="language-bash">topology_runner --package hyrrokkin_example_packages.numberstream --execution-folder /tmp/execution_test --import topology.yaml --run --export topology.zip
+<pre><code class="language-bash">topology_runner --package hyrrokkin.example_packages.numberstream \
+                --execution-folder /tmp/execution_test \
+                --import topology.yaml \
+                --run --export topology.zip
 </code></pre>
 <p>Convert a topology from zip format to yaml format, but do not run it:</p>
-<pre><code class="language-bash">topology_runner --package hyrrokkin_example_packages.numberstream --execution-folder /tmp/execution_test --import topology.zip --export topology.yaml
+<pre><code class="language-bash">topology_runner --package hyrrokkin.example_packages.numberstream \
+                --execution-folder /tmp/execution_test \
+                --import topology.zip \
+                --export topology.yaml
 </code></pre>
 <h2 id="using-the-hyrrokkin-expression-parser">Using the Hyrrokkin expression parser</h2>
 <p>Often nodes need to work with string-based expressions, for example:</p>
 <p><code>r * sin(theta)</code></p>
 <p>Hyrrokkin provides a simple expression based parser which can be set up to parse simple string based expressions into a parse tree.</p>
 <pre><code class="language-python">from hyrrokkin.utils.expr_parser import ExpressionParser
+import json
 
 ep = ExpressionParser()
 ep.add_binary_operator(&quot;*&quot;,1)
-print(JSON.dumps(ep.parse(&quot;10 * sin(pi)&quot;,intent=2)))
+print(json.dumps(ep.parse(&quot;10 * sin(pi)&quot;),indent=2))
 </code></pre>
 <p>This program will print:</p>
 <pre><code class="language-json">{
@@ -654,6 +626,6 @@ print(JSON.dumps(ep.parse(&quot;10 * sin(pi)&quot;,intent=2)))
 </html>
 
 <!--
-MkDocs version : 1.5.3
-Build Date UTC : 2024-09-01 15:32:30.778299+00:00
+MkDocs version : 1.6.1
+Build Date UTC : 2024-11-10 20:32:24.369738+00:00
 -->

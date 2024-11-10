@@ -20,20 +20,18 @@
 import logging
 import inspect
 
-from hyrrokkin.utils.data_store_utils import DataStoreUtils
 from .wrapper import Wrapper
 
 class NodeWrapper(Wrapper):
 
-    def __init__(self, executor, network, node_id, services):
-        super().__init__(executor, network)
+    def __init__(self, executor, execution_folder, node_id, services):
+        super().__init__(executor, execution_folder)
 
         self.node_id = node_id
 
         self.services = services
 
-        self.dsu = DataStoreUtils(self.network.get_directory())
-        self.properties = self.dsu.get_node_properties(self.node_id)
+        self.properties = self.get_datastore_utils().get_node_properties(self.node_id)
 
         self.configuration = None
         self.logger = logging.getLogger(f"NodeWrapper[{node_id}]")
@@ -91,32 +89,24 @@ class NodeWrapper(Wrapper):
             if property_name in self.properties:
                 del self.properties[property_name]
 
-        self.dsu.set_node_property(self.node_id, property_name, property_value)
+        self.get_datastore_utils().set_node_property(self.node_id, property_name, property_value)
 
     def reload_properties(self):
-        self.properties = self.dsu.get_node_properties(self.node_id)
+        self.properties = self.get_datastore_utils().get_node_properties(self.node_id)
 
     def get_data(self, key):
-        return self.dsu.get_node_data(self.node_id, key)
+        return self.get_datastore_utils().get_node_data(self.node_id, key)
 
     def set_data(self, key, data):
-        self.dsu.set_node_data(self.node_id, key, data)
+        self.get_datastore_utils().set_node_data(self.node_id, key, data)
 
-    def set_configuration(self, configuration):
-        self.configuration = configuration
+    def set_configuration_wrapper(self, configuration_wrapper):
+        self.configuration_wrapper = configuration_wrapper
 
-    def get_configuration(self):
-        return self.configuration
+    def get_configuration_wrapper(self, package_id):
+        return self.configuration_wrapper if package_id is None else self.executor.get_configuration_wrapper(package_id)
 
-    def fire_output_port_event(self, output_port_name, event_type, event_value):
-        return self.executor.fire_output_port_event(self.node_id, output_port_name, event_type, event_value)
 
-    def handle_input_port_event(self, input_port_name, event_type, event_value):
-        try:
-            if hasattr(self.instance, "handle_input_port_event"):
-                self.instance.handle_input_port_event(input_port_name, event_type, event_value)
-        except:
-            self.logger.exception(f"Error in handle_input_port_event for node {self.node_id}")
 
 
 

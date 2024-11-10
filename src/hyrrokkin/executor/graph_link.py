@@ -17,13 +17,17 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import unittest
 
-if __name__ == '__main__':
-    import logging
-    logging.basicConfig(level=logging.INFO)
-    unittest.main("unit_tests.basic_tests",exit=False)
-    unittest.main("unit_tests.file_storage_tests",exit=False)
-    unittest.main("unit_tests.test_yaml_import",exit=False)
-    unittest.main("unit_tests.test_yaml_export",exit=False)
-    unittest.main("unit_tests.expr_parser.test_expr_parser",exit=False)
+class GraphLink:
+
+    def __init__(self, executor, from_node_id, from_port, to_node_id, to_port):
+        self.executor = executor
+        self.from_node_id = from_node_id
+        self.from_port = from_port
+        self.to_node_id = to_node_id
+        self.to_port = to_port
+
+    def get_value(self):
+        return self.executor.node_outputs.get(self.from_node_id,{}).get(self.from_port,None)
+
+
