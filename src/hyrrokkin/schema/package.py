@@ -64,6 +64,14 @@ class Package:
             "configuration": self.configuration
         }
 
+    def get_classmap(self):
+        classmap = { "nodes": {} }
+        if self.configuration:
+            classmap["configuration"] = self.configuration["classname"]
+        for (id, node_type) in self.node_types.items():
+            classmap["nodes"][id] = node_type.get_classname()
+        return classmap
+
     @staticmethod
     def load(from_dict, package_resource_path):
         node_types = from_dict.get("node_types", {})

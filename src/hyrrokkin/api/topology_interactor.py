@@ -39,7 +39,7 @@ class TopologyInteractor:
              an object which implements the ClientService API and provides methods to interact with the client
 
         """
-        return self.executor.attach_client(("node", node_id), client_id, client_options, self.client_service_classes)
+        return self.executor.attach_client(node_id, "node", client_id, client_options, self.client_service_classes)
 
     def detach_node_client(self, node_id: str, client_id: str | tuple[str, str]):
         """
@@ -49,7 +49,7 @@ class TopologyInteractor:
             node_id: the node to which the client is to be attached
             client_id: an identifier for the client
         """
-        self.executor.detach_client(("node", node_id), client_id)
+        self.executor.detach_client(node_id, "node", client_id)
 
     def attach_configuration_client(self, package_id: str, client_id: str | tuple[str, str], client_options: dict = {}) -> ClientServiceBase:
         """
@@ -63,7 +63,7 @@ class TopologyInteractor:
         Returns:
              an object which implements the ClientService API and provides methods to interact with the client
         """
-        return self.executor.attach_client(("configuration", package_id), client_id, client_options, self.client_service_classes)
+        return self.executor.attach_client(package_id, "configuration", client_id, client_options, self.client_service_classes)
 
     def detach_configuration_client(self, package_id: str, client_id: str | tuple[str, str]):
         """
@@ -73,7 +73,7 @@ class TopologyInteractor:
             package_id: the node to which the client is to be attached
             client_id: an identifier for the client
         """
-        return self.executor.detach_client(("configuration", package_id), client_id)
+        return self.executor.detach_client(package_id, "configuration", client_id)
 
     def pause(self):
         self.executor.pause()

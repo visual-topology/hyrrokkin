@@ -59,10 +59,7 @@ class PrimeFactorsNode:
                 raise Exception(f"input value {value} is invalid (not integer)")
             if value < 2:
                 raise Exception(f"input value {value} is invalid (< 2)")
-
-            prime_factors = self.services.get_configuration().get_prime_factors(value)
-            if not prime_factors:
-                prime_factors = self.find_prime_factors(value)
+            prime_factors = self.find_prime_factors(value)
             return { "data_out":prime_factors }
 
 

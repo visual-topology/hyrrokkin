@@ -20,30 +20,33 @@
 
 class ExecutionClient():
 
-    def __init__(self, target_id, client_id, client_service, client_options, execution_client_service_class):
-        self.execution_thread = None
-        self.target_id = target_id # typically, ("node",node_id) or ("configuration",configuration_id)
+    def __init__(self, graph_executor, target_id, target_type, client_id, client_service, client_options, execution_client_service_class):
+        self.graph_executor = graph_executor
+        self.target_id = target_id
+        self.target_type = target_type # node or configuration
         self.client_id = client_id
         self.client_service = client_service
         self.client_options = client_options
-        self.pending_messages = []
         self.execution_client_service_class = execution_client_service_class
         self.client_service.open(lambda *msg: self.send_message(*msg))
+        self.pending_messages = []
+        self.connected = False
+
+    def set_connected(self):
+        self.connected = True
+        for message in self.pending_messages:
+            self.graph_executor.forward_client_message(self.target_id, self.target_type, self.client_id, *message)
+        self.pending_messages = []
 
     def get_execution_client_service_class(self):
         return self.execution_client_service_class
 
     def send_message(self, *msg):
-        if self.execution_thread:
-            self.execution_thread.schedule_recv_message(self.target_id, self.client_id, *msg)
+        # send a message to the configuration or node
+        if self.connected:
+            self.graph_executor.forward_client_message(self.target_id, self.target_type, self.client_id, *msg)
         else:
             self.pending_messages.append(msg)
-
-    def connect_execution(self, execution_thread):
-        self.execution_thread = execution_thread
-        for msg in self.pending_messages:
-            self.execution_thread.schedule_recv_message(self.target_id, self.client_id, *msg)
-        self.pending_messages = []
 
     def message_callback(self, *msg):
         self.client_service.handle_message(*msg)

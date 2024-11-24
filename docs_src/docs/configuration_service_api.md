@@ -1,4 +1,4 @@
 
 ## Configuration Services API
 
-::: hyrrokkin.services.configuration_services
+::: hyrrokkin.executor.configuration_services

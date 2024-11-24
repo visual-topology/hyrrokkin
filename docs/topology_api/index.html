@@ -136,7 +136,8 @@
 
     def __init__(self, execution_folder:str, package_list: list[str],
                  status_handler: Callable[[str, str, str, str], None] = None,
-                 execution_handler: Callable[[Union[float,None], str, str, Union[Dict, Exception, None], bool], None] = None):
+                 execution_handler: Callable[[Union[float,None], str, str, Union[Dict, Exception, None], bool], None] = None,
+                 in_process:bool=False):
         """
         Create a topology
 
@@ -147,6 +148,7 @@
                                  passing parameters target_id, target_type, msg, status
             execution_handler: specify a function to call when a node changes its execution status
                                 passing parameters timestamp, node_id, state, exception, is_manual
+            in_process: whether to execute the topology within the current process (True) or in a separate process (False)
         """
         self.execution_folder = execution_folder
         os.makedirs(self.execution_folder, exist_ok=True)
@@ -158,9 +160,10 @@
         self.execution_handler = execution_handler
 
         self.network = Network(self.schema, self.execution_folder)
-        self.executor = GraphExecutor(self.network, self.schema, execution_folder=self.execution_folder,
+        self.executor = ExecutionManager(self.network, self.schema, execution_folder=self.execution_folder,
                                       status_callback=self.status_handler,
-                                      node_execution_callback=self.execution_handler)
+                                      node_execution_callback=self.execution_handler,
+                                      in_process=in_process)
         # the empty flag indicates that the topology contains no nodes and no
         # package properties or package data has been assigned
         self.empty = True
@@ -228,9 +231,9 @@
             (node_id, port) = tuple(node_port.split(":"))
             self.executor.add_output_listener((node_id,port),value_listener)
 
-        return self.executor.run(terminate_on_complete=True)
+        return self.executor.run()
 
-    def create_interactive_session(self, client_service_classes:tuple[str,str]=("hyrrokkin.services.client_service.ClientService","hyrrokkin.services.client_service.ClientService")) -&gt; TopologyInteractor:
+    def create_interactive_session(self, client_service_classes:tuple[str,str]=("hyrrokkin.executor.client_service.ClientService","hyrrokkin.executor.client_service.ClientService")) -&gt; TopologyInteractor:
         """
         Run the topology interactively
 
@@ -260,9 +263,6 @@
         """
         self.dsu.set_package_properties(package_id, properties)
         self.empty = False
-
-
-
 
     def add_node(self, node_id: str, node_type: str, properties: dict[str, JsonType]={},
                  metadata:dict[str, JsonType]={}, x:int=0, y:int=0) -&gt; str:
@@ -695,7 +695,7 @@
 
 
 <h3 id="hyrrokkin.api.topology.Topology.__init__" class="doc doc-heading">
-            <code class="highlight language-python">__init__(execution_folder, package_list, status_handler=None, execution_handler=None)</code>
+            <code class="highlight language-python">__init__(execution_folder, package_list, status_handler=None, execution_handler=None, in_process=False)</code>
 
 </h3>
 
@@ -753,6 +753,16 @@
                 passing parameters timestamp, node_id, state, exception, is_manual</p>
               </div>
             </li>
+            <li>
+              <b><code>in_process</code></b>
+                  (<code>bool</code>, default:
+                      <code>False</code>
+)
+              –
+              <div class="doc-md-description">
+                <p>whether to execute the topology within the current process (True) or in a separate process (False)</p>
+              </div>
+            </li>
         </ul>
       </td>
     </tr>
@@ -762,7 +772,8 @@
               <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
               <pre class="highlight"><code class="language-python">def __init__(self, execution_folder:str, package_list: list[str],
              status_handler: Callable[[str, str, str, str], None] = None,
-             execution_handler: Callable[[Union[float,None], str, str, Union[Dict, Exception, None], bool], None] = None):
+             execution_handler: Callable[[Union[float,None], str, str, Union[Dict, Exception, None], bool], None] = None,
+             in_process:bool=False):
     """
     Create a topology
 
@@ -773,6 +784,7 @@
                              passing parameters target_id, target_type, msg, status
         execution_handler: specify a function to call when a node changes its execution status
                             passing parameters timestamp, node_id, state, exception, is_manual
+        in_process: whether to execute the topology within the current process (True) or in a separate process (False)
     """
     self.execution_folder = execution_folder
     os.makedirs(self.execution_folder, exist_ok=True)
@@ -784,9 +796,10 @@
     self.execution_handler = execution_handler
 
     self.network = Network(self.schema, self.execution_folder)
-    self.executor = GraphExecutor(self.network, self.schema, execution_folder=self.execution_folder,
+    self.executor = ExecutionManager(self.network, self.schema, execution_folder=self.execution_folder,
                                   status_callback=self.status_handler,
-                                  node_execution_callback=self.execution_handler)
+                                  node_execution_callback=self.execution_handler,
+                                  in_process=in_process)
     # the empty flag indicates that the topology contains no nodes and no
     # package properties or package data has been assigned
     self.empty = True</code></pre>
@@ -1110,7 +1123,7 @@
 
 
 <h3 id="hyrrokkin.api.topology.Topology.create_interactive_session" class="doc doc-heading">
-            <code class="highlight language-python">create_interactive_session(client_service_classes=('hyrrokkin.services.client_service.ClientService', 'hyrrokkin.services.client_service.ClientService'))</code>
+            <code class="highlight language-python">create_interactive_session(client_service_classes=('hyrrokkin.executor.client_service.ClientService', 'hyrrokkin.executor.client_service.ClientService'))</code>
 
 </h3>
 
@@ -1122,7 +1135,7 @@
 
             <details class="quote">
               <summary>Source code in <code>hyrrokkin/api/topology.py</code></summary>
-              <pre class="highlight"><code class="language-python">def create_interactive_session(self, client_service_classes:tuple[str,str]=("hyrrokkin.services.client_service.ClientService","hyrrokkin.services.client_service.ClientService")) -&gt; TopologyInteractor:
+              <pre class="highlight"><code class="language-python">def create_interactive_session(self, client_service_classes:tuple[str,str]=("hyrrokkin.executor.client_service.ClientService","hyrrokkin.executor.client_service.ClientService")) -&gt; TopologyInteractor:
     """
     Run the topology interactively
 
@@ -2463,7 +2476,7 @@
         (node_id, port) = tuple(node_port.split(":"))
         self.executor.add_output_listener((node_id,port),value_listener)
 
-    return self.executor.run(terminate_on_complete=True)</code></pre>
+    return self.executor.run()</code></pre>
             </details>
     </div>
 

@@ -52,7 +52,7 @@ class ConfigurationWrapper(Wrapper):
         self.get_datastore_utils().set_package_property(self.package_id, property_name, property_value)
 
     def set_status(self, state, status_message):
-        self.executor.notify(lambda executor: executor.status_update(self.package_id, "configuration", status_message, state))
+        self.execution_engine.set_status(self.package_id, "configuration", status_message, state)
 
     def get_data(self, key):
         return self.get_datastore_utils().get_package_data(self.package_id, key)
@@ -61,7 +61,7 @@ class ConfigurationWrapper(Wrapper):
         return self.get_datastore_utils().set_package_data(self.package_id, key, data)
 
     def get_configuration_wrapper(self, package_id):
-        return self.executor.get_configuration_wrapper(package_id)
+        return self.execution_engine.get_configuration_wrapper(package_id)
 
 
 
