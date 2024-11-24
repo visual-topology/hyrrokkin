@@ -21,7 +21,7 @@ import io
 import os
 from typing import List, Callable, Union, Literal, Any, Dict, Protocol
 
-from hyrrokkin.executor.graph_executor import GraphExecutor
+from hyrrokkin.execution_manager.execution_manager import ExecutionManager
 from hyrrokkin.schema.schema import Schema
 from hyrrokkin.model.node import Node
 from hyrrokkin.model.link import Link
@@ -37,7 +37,8 @@ class Topology:
 
     def __init__(self, execution_folder:str, package_list: list[str],
                  status_handler: Callable[[str, str, str, str], None] = None,
-                 execution_handler: Callable[[Union[float,None], str, str, Union[Dict, Exception, None], bool], None] = None):
+                 execution_handler: Callable[[Union[float,None], str, str, Union[Dict, Exception, None], bool], None] = None,
+                 in_process:bool=False):
         """
         Create a topology
 
@@ -48,6 +49,7 @@ class Topology:
                                  passing parameters target_id, target_type, msg, status
             execution_handler: specify a function to call when a node changes its execution status
                                 passing parameters timestamp, node_id, state, exception, is_manual
+            in_process: whether to execute the topology within the current process (True) or in a separate process (False)
         """
         self.execution_folder = execution_folder
         os.makedirs(self.execution_folder, exist_ok=True)
@@ -59,9 +61,10 @@ class Topology:
         self.execution_handler = execution_handler
 
         self.network = Network(self.schema, self.execution_folder)
-        self.executor = GraphExecutor(self.network, self.schema, execution_folder=self.execution_folder,
+        self.executor = ExecutionManager(self.network, self.schema, execution_folder=self.execution_folder,
                                       status_callback=self.status_handler,
-                                      node_execution_callback=self.execution_handler)
+                                      node_execution_callback=self.execution_handler,
+                                      in_process=in_process)
         # the empty flag indicates that the topology contains no nodes and no
         # package properties or package data has been assigned
         self.empty = True
@@ -129,9 +132,9 @@ class Topology:
             (node_id, port) = tuple(node_port.split(":"))
             self.executor.add_output_listener((node_id,port),value_listener)
 
-        return self.executor.run(terminate_on_complete=True)
+        return self.executor.run()
 
-    def create_interactive_session(self, client_service_classes:tuple[str,str]=("hyrrokkin.services.client_service.ClientService","hyrrokkin.services.client_service.ClientService")) -> TopologyInteractor:
+    def create_interactive_session(self, client_service_classes:tuple[str,str]=("hyrrokkin.executor.client_service.ClientService","hyrrokkin.executor.client_service.ClientService")) -> TopologyInteractor:
         """
         Run the topology interactively
 
@@ -161,9 +164,6 @@ class Topology:
         """
         self.dsu.set_package_properties(package_id, properties)
         self.empty = False
-
-
-
 
     def add_node(self, node_id: str, node_type: str, properties: dict[str, JsonType]={},
                  metadata:dict[str, JsonType]={}, x:int=0, y:int=0) -> str:

@@ -24,8 +24,8 @@ from .wrapper import Wrapper
 
 class NodeWrapper(Wrapper):
 
-    def __init__(self, executor, execution_folder, node_id, services):
-        super().__init__(executor, execution_folder)
+    def __init__(self, execution_engine, execution_folder, node_id, services):
+        super().__init__(execution_engine, execution_folder)
 
         self.node_id = node_id
 
@@ -71,13 +71,13 @@ class NodeWrapper(Wrapper):
             return {}
 
     def set_status(self, state, status_message):
-        self.executor.notify(lambda executor: executor.status_update(self.node_id, "node", status_message, state))
+        self.execution_engine.set_status(self.node_id, "node", status_message, state)
 
     def set_execution_state(self, execution_state):
-        self.executor.notify(lambda executor: executor.set_execution_state(self.node_id, execution_state))
+        self.execution_engine.set_node_execution_state(self.node_id, execution_state, is_manual=True)
 
     def request_execution(self):
-        self.executor.request_node_execution(self.node_id)
+        self.execution_engine.request_execution(self.node_id)
 
     def get_property(self, property_name, default_value):
         return self.properties.get(property_name, default_value)

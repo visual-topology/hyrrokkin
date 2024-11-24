@@ -18,7 +18,7 @@
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import typing
-from hyrrokkin.services.status_states import StatusStates
+from .status_states import StatusStates
 
 from hyrrokkin.utils.type_hints import JsonType
 

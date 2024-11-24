@@ -32,6 +32,12 @@ class Schema:
     def get_packages(self):
         return self.packages
 
+    def get_classmap(self):
+        classmap = {}
+        for package_id in self.packages:
+            classmap[package_id] = self.packages[package_id].get_classmap()
+        return classmap
+
     def get_node_type(self, node_type_name):
         (package_id, node_type_id) = Schema.split_descriptor(node_type_name)
         return self.packages[package_id].get_node_type(node_type_id)

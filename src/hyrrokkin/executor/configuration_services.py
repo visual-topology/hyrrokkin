@@ -19,7 +19,7 @@
 
 import typing
 
-from hyrrokkin.services.status_states import StatusStates
+from .status_states import StatusStates
 
 class ConfigurationServices:
     """

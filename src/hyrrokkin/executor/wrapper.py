@@ -17,18 +17,20 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import logging
 
 from hyrrokkin.utils.resource_loader import ResourceLoader
 from hyrrokkin.utils.data_store_utils import DataStoreUtils
 
 class Wrapper:
 
-    def __init__(self, executor, execution_folder):
-        self.executor = executor
+    def __init__(self, execution_engine, execution_folder):
+        self.execution_engine = execution_engine
         self.execution_folder = execution_folder
         self.datastore_utils = DataStoreUtils(self.execution_folder)
         self.instance = None
         self.client_services = {}
+        self.logger = logging.getLogger("NodeWrapper")
 
     def set_instance(self, instance):
         self.instance = instance
@@ -40,10 +42,11 @@ class Wrapper:
         return self.datastore_utils
 
     def open_client(self, client_id, client_options, client_service_class):
-
+        if isinstance(client_id,list):
+            client_id = tuple(client_id)
         def message_forwarder(*message_parts):
             # send a message to a client
-            self.executor.message_update((self.get_type(), self.get_id()), client_id, *message_parts)
+            self.execution_engine.send_message(self.get_id(), self.get_type(), client_id, *message_parts)
         try:
             if hasattr(self.instance, "open_client"):
                 cls = ResourceLoader.get_class(client_service_class)
@@ -55,10 +58,14 @@ class Wrapper:
             self.logger.exception(f"Error in open_client for {str(self)}")
 
     def recv_message(self, client_id, *message):
+        if isinstance(client_id,list):
+            client_id = tuple(client_id)
         if client_id in self.client_services:
             self.client_services[client_id].handle_message(*message)
 
     def close_client(self, client_id):
+        if isinstance(client_id,list):
+            client_id = tuple(client_id)
         if client_id in self.client_services:
             client_service = self.client_services[client_id]
             client_service.close()

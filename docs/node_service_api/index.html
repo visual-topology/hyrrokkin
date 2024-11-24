@@ -92,7 +92,7 @@
 
 
 
-<a id="hyrrokkin.services.node_services"></a>
+<a id="hyrrokkin.executor.node_services"></a>
     <div class="doc doc-contents first">
 
 
@@ -115,7 +115,7 @@
 
 
 
-<h2 id="hyrrokkin.services.node_services.NodeServices" class="doc doc-heading">
+<h2 id="hyrrokkin.executor.node_services.NodeServices" class="doc doc-heading">
             <code>NodeServices</code>
 
 
@@ -133,7 +133,7 @@
 
 
               <details class="quote">
-                <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+                <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
                 <pre class="highlight"><code class="language-python">class NodeServices:
 
     """
@@ -279,7 +279,7 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.clear_status" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.clear_status" class="doc doc-heading">
             <code class="highlight language-python">clear_status()</code>
 
 </h3>
@@ -290,7 +290,7 @@
         <p>Clear any previous status message on the node</p>
 
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def clear_status(self):
     """
     Clear any previous status message on the node
@@ -304,7 +304,7 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.get_configuration" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.get_configuration" class="doc doc-heading">
             <code class="highlight language-python">get_configuration(package_id=None)</code>
 
 </h3>
@@ -364,7 +364,7 @@
   </tbody>
 </table>
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def get_configuration(self, package_id:str=None) -&gt; typing.Union[None,"ConfigurationBase"]:
     """
     Obtain a configuration object if defined for the node's package.
@@ -384,7 +384,7 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.get_data" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.get_data" class="doc doc-heading">
             <code class="highlight language-python">get_data(key)</code>
 
 </h3>
@@ -442,7 +442,7 @@
   </tbody>
 </table>
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def get_data(self, key:str) -&gt; typing.Union[bytes,None]:
     """
     Get binary data (bytes) associated with this node.
@@ -462,7 +462,7 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.get_node_id" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.get_node_id" class="doc doc-heading">
             <code class="highlight language-python">get_node_id()</code>
 
 </h3>
@@ -495,7 +495,7 @@
   </tbody>
 </table>
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def get_node_id(self) -&gt; str:
     """
     Returns:
@@ -510,7 +510,7 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.get_property" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.get_property" class="doc doc-heading">
             <code class="highlight language-python">get_property(property_name, default_value=None)</code>
 
 </h3>
@@ -578,7 +578,7 @@
   </tbody>
 </table>
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def get_property(self, property_name:str, default_value:JsonType=None) -&gt; JsonType:
     """
     Get the current value for the node's property
@@ -599,7 +599,7 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.request_run" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.request_run" class="doc doc-heading">
             <code class="highlight language-python">request_run()</code>
 
 </h3>
@@ -610,7 +610,7 @@
         <p>Request that this node be run</p>
 
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def request_run(self):
     """
     Request that this node be run
@@ -624,7 +624,7 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.set_data" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.set_data" class="doc doc-heading">
             <code class="highlight language-python">set_data(key, data)</code>
 
 </h3>
@@ -667,7 +667,7 @@
   </tbody>
 </table>
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def set_data(self, key:str, data:typing.Union[bytes,None]):
     """
     Set binary data (bytes) associated with this node.
@@ -685,7 +685,7 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.set_property" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.set_property" class="doc doc-heading">
             <code class="highlight language-python">set_property(property_name, property_value)</code>
 
 </h3>
@@ -733,7 +733,7 @@
   <p>property values MUST be JSON-serialisable</p>
 </details>
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def set_property(self, property_name:str, property_value: JsonType):
     """
     Set the current value for the node's property
@@ -754,7 +754,7 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.set_state" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.set_state" class="doc doc-heading">
             <code class="highlight language-python">set_state(state)</code>
 
 </h3>
@@ -795,7 +795,7 @@
 After making this call, the execution state will be tracked manually for the node involved.</p>
 </details>
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def set_state(self, state:str):
     """
     Manually set the state of the node
@@ -816,7 +816,7 @@ After making this call, the execution state will be tracked manually for the nod
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.set_status_error" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.set_status_error" class="doc doc-heading">
             <code class="highlight language-python">set_status_error(status_message)</code>
 
 </h3>
@@ -851,7 +851,7 @@ After making this call, the execution state will be tracked manually for the nod
   </tbody>
 </table>
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def set_status_error(self, status_message:str):
     """
     Set an error status message for the node.
@@ -868,7 +868,7 @@ After making this call, the execution state will be tracked manually for the nod
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.set_status_info" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.set_status_info" class="doc doc-heading">
             <code class="highlight language-python">set_status_info(status_message)</code>
 
 </h3>
@@ -903,7 +903,7 @@ After making this call, the execution state will be tracked manually for the nod
   </tbody>
 </table>
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def set_status_info(self, status_message:str):
     """
     Set an info status message for the node.
@@ -920,7 +920,7 @@ After making this call, the execution state will be tracked manually for the nod
 <div class="doc doc-object doc-function">
 
 
-<h3 id="hyrrokkin.services.node_services.NodeServices.set_status_warning" class="doc doc-heading">
+<h3 id="hyrrokkin.executor.node_services.NodeServices.set_status_warning" class="doc doc-heading">
             <code class="highlight language-python">set_status_warning(status_message)</code>
 
 </h3>
@@ -955,7 +955,7 @@ After making this call, the execution state will be tracked manually for the nod
   </tbody>
 </table>
             <details class="quote">
-              <summary>Source code in <code>hyrrokkin/services/node_services.py</code></summary>
+              <summary>Source code in <code>hyrrokkin/executor/node_services.py</code></summary>
               <pre class="highlight"><code class="language-python">def set_status_warning(self, status_message:str):
     """
     Set a warning status message for the node.
