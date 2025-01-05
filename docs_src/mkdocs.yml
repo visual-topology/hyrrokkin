@@ -4,6 +4,11 @@ theme:
   name: "readthedocs"
     #  name: "material"
 
+markdown_extensions:
+  - pymdownx.snippets:
+      restrict_base_path: false
+      check_paths: true
+
 plugins:
   - mkdocstrings
 docs_dir: docs

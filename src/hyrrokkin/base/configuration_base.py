@@ -38,6 +38,13 @@ class ConfigurationBase:
         pass
 
     @abstractmethod
+    async def load(self):
+        """
+        Load any resources associated with this Configuration
+        """
+        pass
+
+    @abstractmethod
     def open_client(self, client_id:str, client_options:dict, send_fn:ClientMessageProtocol) -> ClientMessageProtocol:
         """
         Called when a client is attached to the configuration

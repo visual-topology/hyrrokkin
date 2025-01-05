@@ -111,10 +111,10 @@ class ExecutionEngine():
         self.dispatch()
 
     async def add_package(self,package_id):
-        self.register_package(package_id)
+        await self.register_package(package_id)
 
     async def add_node(self, node_id, node_type_id, loading=False):
-        self.register_node(node_id, node_type_id)
+        await self.register_node(node_id, node_type_id)
         self.mark_dirty(node_id)
         if not loading:
             self.notify_connection_counts(node_id)
@@ -259,7 +259,7 @@ class ExecutionEngine():
             if client_id in pending[target_id]:
                 pending[target_id].remove(client_id)
 
-    def register_node(self, node_id, node_type_id):
+    async def register_node(self, node_id, node_type_id):
         (package_id, node_type_id) = node_type_id.split(":")
         services = NodeServices(node_id)
         node_wrapper = NodeWrapper(self, self.execution_folder, node_id, services)
@@ -270,6 +270,7 @@ class ExecutionEngine():
         try:
             instance = cls(services)
             node_wrapper.set_instance(instance)
+            await node_wrapper.load()
         except Exception as ex:
             print(ex)
 
@@ -288,7 +289,7 @@ class ExecutionEngine():
                 node_wrapper.recv_message(client_id, *msg)
             del self.pending_node_messages[node_id]
 
-    def register_package(self, package_id):
+    async def register_package(self, package_id):
         classname = self.classmap.get(package_id,{}).get("configuration","")
         if not classname:
             return
@@ -300,6 +301,8 @@ class ExecutionEngine():
         cls = ResourceLoader.get_class(classname)
         instance = cls(services)
         configuration_wrapper.set_instance(instance)
+        await configuration_wrapper.load()
+
         self.configuration_wrappers[package_id] = configuration_wrapper
 
         if package_id in self.pending_configuration_clients:

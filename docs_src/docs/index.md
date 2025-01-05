@@ -42,83 +42,10 @@ Receives a list of numbers via its input ports `integer_data_in` amd `integerlis
 
 Each package can define a configuration class - all node instances within a topology that belong to the package.
 
-Each Package, and the Link Types, Node Types it contains, is specified in a JSON formatted document that represents the schema of that Package.  
+Each Package, and the Link Types, Node Types it contains, is specified in a JSON formatted document that represents the schema of that Package.
 
-```json
-{
-    "id": "numberstream",
-    "metadata": {
-        "name": "Number Stream",
-        "version": "0.0.1",
-        "description": "a small example package for manipulating numbers"
-    },
-    "configuration": {
-        "classname": "numberstream_configuration.NumberstreamConfiguration"
-    },
-    "node_types": {
-        "number_input_node": {
-            "metadata": {
-                "name": "Number Input Node",
-                "description": "Define an integer value"
-            },
-            "output_ports": {
-                "data_out": {
-                    "link_type": "numberstream:integer"
-                }
-            },
-            "classname": "nodes.number_input_node.NumberInputNode"
-        },
-        "prime_factors_node": {
-            "metadata": {
-                "name": "Prime Factors Node",
-                "description": "Calculate the prime factors of each input number"
-            },
-            "input_ports": {
-                "data_in": {
-                    "link_type": "numberstream:integer",
-                    "allow_multiple_connections": false
-                }
-            },
-            "output_ports": {
-                "data_out": {
-                    "link_type": "numberstream:integerlist"
-                }
-            },
-            "classname": "nodes.prime_factors_node.PrimeFactorsNode"
-        },
-        "number_display_node": {
-            "metadata": {
-                "name": "Number Display Node",
-                "description": "Display all input numbers"
-            },
-            "input_ports": {
-                "integer_data_in": {
-                    "link_type": "numberstream:integer"
-                },
-                "integerlist_data_in": {
-                    "link_type": "numberstream:integerlist"
-                }
-            },
-            "output_ports": {
-            },
-            "classname": "nodes.number_display_node.NumberDisplayNode"
-        }
-    },
-    "link_types": {
-        "integer": {
-            "metadata": {
-                "name": "Integer",
-                "description": "This type of link carries integer values"
-            }
-        },
-        "integerlist": {
-            "metadata": {
-                "name": "IntegerList",
-                "description": "This type of link carries values that are lists of integers"
-            }
-        }
-    }
-}
+```
+--8<-- "../src/hyrrokkin/example_packages/numberstream/schema.json"
 ```
 
 When refering to a link type, the package id should be used as a prefix, `<package-id>:<link-type-id>`.  In this example, `numberstream:integer` refers to the link type `number` defined in the `numberstream` example package.  This allows packages to refer to link types defined in other packages when defining nodes.
@@ -135,64 +62,23 @@ Each Node Type is associated with the following information:
 When a node is constructed, the constructor is passed a service API object, providing various useful services.  
 
 ``` py
-class PrimeFactorsNode:
-
-    def __init__(self,services):
-        self.services = services
-        
-    def find_prime_factors(self,n):
-        """Return a list of prime factors for input value n"""
-        ...
-        
-    def run(self, inputs):
-        input_values = inputs.get("data_in",[])
-        if len(input_values):
-            value = input_values[0]
-            if not isinstance(value,int):
-                raise Exception("input value {value} is not integer")
-            if value < 2:
-                prime_factors = [] # no solution
-            else:
-                prime_factors = self.find_prime_factors(value)
-            return { "data_out":prime_factors }
+--8<-- "../src/hyrrokkin/example_packages/numberstream/nodes/prime_factors_node.py"
 ```
-
-As well as the `get_property` and `set_property` methods, the services API also provides methods `get_data` and `set_data` which work in a similar way - nodes may use these to read and write data represetned as a sequence of bytes.  
-
-In general nodes may use data to persist the results of computation, for example, a machine learning model that the node has trained and then serialised to a sequence of bytes.
-
 
 ### Persisting node properties
 
 Consider a node which supplies an integer values via an output port `data_out`
 
 ```
-class NumberInputNode:
-
-    def __init__(self, services):
-        self.services = services
-
-    def open_client(self,client_id, client_options, client_service):
-        client_service.set_message_handler(lambda *msg: self.__handle_message(client_id, *msg))
-
-    def __handle_message(self,client_id, value):
-        if not isinstance(value,int):
-            # warn that the client has provided an invalid value
-            self.services.set_status_warning("New value passed by client is not integer")
-        else:
-            self.services.set_property("value", value)
-            self.services.request_run()
-
-    async def run(self, inputs):
-        value = self.services.get_property("value", 10)
-        return { "data_out": value }
+--8<-- "../src/hyrrokkin/example_packages/numberstream/nodes/number_input_node.py"
 ```
 
 The integer value is stored in a `value` property and the services api `get_property(name,value)` and `set_property(name,value)` are used to retrieve and update the value.
 
 Property names must be strings and values must be JSON-serialisable objects.
 
-The services API also provides methods to get and set binary data: `get_data(name,value)` and `set_data(name,value)` where values of type bytes.
+The services API also provides methods to get and set binary data: `get_data(name,value)` and `set_data(name,value)` where values of type bytes. In general nodes may use data to persist the results of computation, for example, a machine learning model that the node has trained and then serialised to a sequence of bytes.
+In general nodes may use data to persist the results of computation, for example, a machine learning model that the node has trained and then serialised to a sequence of bytes.
 
 When the node is run, its stored value is output on port `data_out`
 
@@ -222,38 +108,7 @@ The `NumberDisplayNode` implements some code to collect input values and report 
 When a topology is loaded, or when any upstream node in the topology is re-run, the node's inputs will be collected and its run method will be called.  But, before this happens, the node's `reset_run` method will be called, if it is implemented.  A node can implement this method to inform any clients that the node's current results are invalid and the node will soon be re-run.  
 
 ``` py
-import json
-
-class NumberDisplayNode:
-
-    def __init__(self, services):
-        self.services = services
-        self.clients = {}
-
-    def connections_changed(self, input_connection_counts, output_connection_counts):
-        nr_integer_inputs = input_connection_counts.get("integer_data_in",0)
-        nr_integerlist_inputs = input_connection_counts.get("integerlist_data_in",0)
-        self.services.set_status_info(f"{nr_integer_inputs} input integers, {nr_integerlist_inputs} input integerlists")
-
-    def reset_run(self):
-        for client_id in self.clients:
-            self.clients[client_id].send_message(None)
-
-    def run(self, inputs):
-        input_values = inputs.get("integer_data_in",[])+inputs.get("integerlist_data_in",[])
-        txt = json.dumps(input_values)
-        self.services.set_status_info(txt)
-        for client_service in self.clients.values():
-            client_service.send_message(txt)
-
-    def open_client(self, client_id, client_options, client_service):
-        self.clients[client_id] = client_service
-
-    def close_client(self, client_id):
-        del self.clients[client_id]
-
-    def close(self):
-        pass
+--8<-- "../src/hyrrokkin/example_packages/numberstream/nodes/number_display_node.py"
 ```
 
 The `reset_run` method is called as soon as the framework is aware that the node's `run` method will need to be called. 
@@ -266,69 +121,15 @@ A node may implement a `close` method to receive notifications when the node is 
 
 ### Defining the package configuration
 
-The package configuration is defined in a similar way to a node, with a constructor accepting a services object.
+The package configuration is defined in a similar way to a node, with a constructor accepting a services object. and an optional load method which is called to load up any additional resources which are needed by the configuration and its nodes.
 
-In this example, the configuration can offer a shared service to cache factorisations, that can be accessed by all nodes within the topology.
-
-``` py
-import pickle
-
-class NumberstreamConfiguration:
-
-    def __init__(self, services):
-        self.services = services
-        cache_data = services.get_data("prime_factors")
-        self.prime_factor_cache = pickle.loads(cache_data) if cache_data else {}
-        self.services.set_status_info(f"loaded cache ({len(self.prime_factor_cache)} items)")
-
-    def get_prime_factors(self, n):
-        if n in self.prime_factor_cache:
-            return self.prime_factor_cache[n]
-        else:
-            return None
-
-    def set_prime_factors(self, n, factors):
-        self.prime_factor_cache[n] = factors
-
-    def close(self):
-        self.services.set_data("prime_factors", pickle.dumps(self.prime_factor_cache))
-        self.services.set_status_info(f"saved cache ({len(self.prime_factor_cache)} items)")
-```
-
-The configuration is then accessed by node#s via the get_configuration service method.  Completing the definition of `PrimeFactorsNode`:
+In this example, the configuration can offer a shared service to compute and cache factorisations, that can be accessed by all nodes within the topology.
 
 ``` py
-class PrimeFactorsNode:
-
-    ...
-
-    def is_prime(self,n):
-        root = int(math.sqrt(n))
-        for i in range(2, root + 1):
-            if n % i == 0:
-                return False
-        return True
-
-    def find_prime_factors(self,n):
-        factors = self.services.get_configuration().get_prime_factors(n) or []
-        if not factors:
-            i = 2
-            r = n
-            while True:
-                if r % i == 0:
-                    factors.append(i)
-                    r //= i
-                    if self.is_prime(r):
-                        break
-                else:
-                    i += 1
-            if r > 1:
-                factors.append(r)
-            assert (reduce(lambda x, y: x * y, factors, 1) == n and all(self.is_prime(f) for f in factors))
-            self.services.get_configuration().set_prime_factors(n, factors)
-        return factors
-    ...
+--8<-- "../src/hyrrokkin/example_packages/numberstream/numberstream_configuration.py"
 ```
+
+The configuration is then accessed by nodes via the get_configuration service method.  
 
 For more details on the methods that a node or configuration can implement, see
 
@@ -384,7 +185,7 @@ links:
 - n1:data_out => n2:integerlist_data_in
 ```
 
-This can then be imported using the following API calls
+This YAML file can then be imported using the following API calls
 
 ``` py
 from hyrrokkin.api.topology import Topology

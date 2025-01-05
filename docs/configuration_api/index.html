@@ -146,6 +146,13 @@
         pass
 
     @abstractmethod
+    async def load(self):
+        """
+        Load any resources associated with this Configuration
+        """
+        pass
+
+    @abstractmethod
     def open_client(self, client_id:str, client_options:dict, send_fn:ClientMessageProtocol) -&gt; ClientMessageProtocol:
         """
         Called when a client is attached to the configuration
@@ -339,6 +346,37 @@ def close_client(self, client_id:str):
 
     Notes:
         a call to close_client is preceeded by a call to open_client with the same client_id
+    """
+    pass</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="hyrrokkin.base.configuration_base.ConfigurationBase.load" class="doc doc-heading">
+            <code class="highlight language-python">load()</code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
+      <small class="doc doc-label doc-label-async"><code>async</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Load any resources associated with this Configuration</p>
+
+            <details class="quote">
+              <summary>Source code in <code>hyrrokkin/base/configuration_base.py</code></summary>
+              <pre class="highlight"><code class="language-python">@abstractmethod
+async def load(self):
+    """
+    Load any resources associated with this Configuration
     """
     pass</code></pre>
             </details>

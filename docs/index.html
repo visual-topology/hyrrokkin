@@ -151,8 +151,8 @@
 <p>Receives a list of numbers via its input ports <code>integer_data_in</code> amd <code>integerlist_data_in</code>, and communicates those to clients </p>
 <h3 id="package-schema">Package Schema</h3>
 <p>Each package can define a configuration class - all node instances within a topology that belong to the package.</p>
-<p>Each Package, and the Link Types, Node Types it contains, is specified in a JSON formatted document that represents the schema of that Package.  </p>
-<pre><code class="language-json">{
+<p>Each Package, and the Link Types, Node Types it contains, is specified in a JSON formatted document that represents the schema of that Package.</p>
+<pre><code>{
     &quot;id&quot;: &quot;numberstream&quot;,
     &quot;metadata&quot;: {
         &quot;name&quot;: &quot;Number Stream&quot;,
@@ -242,24 +242,22 @@
     def __init__(self,services):
         self.services = services
 
-    def find_prime_factors(self,n):
-        &quot;&quot;&quot;Return a list of prime factors for input value n&quot;&quot;&quot;
-        ...
-
-    def run(self, inputs):
+    async def run(self, inputs):
         input_values = inputs.get(&quot;data_in&quot;,[])
         if len(input_values):
             value = input_values[0]
             if not isinstance(value,int):
-                raise Exception(&quot;input value {value} is not integer&quot;)
+                raise Exception(f&quot;input value {value} is invalid (not integer)&quot;)
             if value &lt; 2:
-                prime_factors = [] # no solution
-            else:
-                prime_factors = self.find_prime_factors(value)
+                raise Exception(f&quot;input value {value} is invalid (&lt; 2)&quot;)
+            prime_factors = self.services.get_configuration().find_prime_factors(value)
             return { &quot;data_out&quot;:prime_factors }
+
+
+
+
+
 </code></pre>
-<p>As well as the <code>get_property</code> and <code>set_property</code> methods, the services API also provides methods <code>get_data</code> and <code>set_data</code> which work in a similar way - nodes may use these to read and write data represetned as a sequence of bytes.  </p>
-<p>In general nodes may use data to persist the results of computation, for example, a machine learning model that the node has trained and then serialised to a sequence of bytes.</p>
 <h3 id="persisting-node-properties">Persisting node properties</h3>
 <p>Consider a node which supplies an integer values via an output port <code>data_out</code></p>
 <pre><code>class NumberInputNode:
@@ -284,7 +282,8 @@
 </code></pre>
 <p>The integer value is stored in a <code>value</code> property and the services api <code>get_property(name,value)</code> and <code>set_property(name,value)</code> are used to retrieve and update the value.</p>
 <p>Property names must be strings and values must be JSON-serialisable objects.</p>
-<p>The services API also provides methods to get and set binary data: <code>get_data(name,value)</code> and <code>set_data(name,value)</code> where values of type bytes.</p>
+<p>The services API also provides methods to get and set binary data: <code>get_data(name,value)</code> and <code>set_data(name,value)</code> where values of type bytes. In general nodes may use data to persist the results of computation, for example, a machine learning model that the node has trained and then serialised to a sequence of bytes.
+In general nodes may use data to persist the results of computation, for example, a machine learning model that the node has trained and then serialised to a sequence of bytes.</p>
 <p>When the node is run, its stored value is output on port <code>data_out</code></p>
 <h3 id="clients-and-updating-status">Clients and updating status</h3>
 <p>Clients are external routines which can communicate with nodes.  Communication happens via message passing, where each message consisting of zero or more values. </p>
@@ -338,7 +337,7 @@ class NumberDisplayNode:
         for client_id in self.clients:
             self.clients[client_id].send_message(None)
 
-    def run(self, inputs):
+    async def run(self, inputs):
         input_values = inputs.get(&quot;integer_data_in&quot;,[])+inputs.get(&quot;integerlist_data_in&quot;,[])
         txt = json.dumps(input_values)
         self.services.set_status_info(txt)
@@ -359,15 +358,27 @@ class NumberDisplayNode:
 <p>A node may implement a <code>connections_changed</code> method to receive notifications providing this information when a topology is first loaded and later, if these connections change:</p>
 <p>A node may implement a <code>close</code> method to receive notifications when the node is removed from a topology</p>
 <h3 id="defining-the-package-configuration">Defining the package configuration</h3>
-<p>The package configuration is defined in a similar way to a node, with a constructor accepting a services object.</p>
-<p>In this example, the configuration can offer a shared service to cache factorisations, that can be accessed by all nodes within the topology.</p>
+<p>The package configuration is defined in a similar way to a node, with a constructor accepting a services object. and an optional load method which is called to load up any additional resources which are needed by the configuration and its nodes.</p>
+<p>In this example, the configuration can offer a shared service to compute and cache factorisations, that can be accessed by all nodes within the topology.</p>
 <pre><code class="language-py">import pickle
+import math
+from functools import reduce
+
+def is_prime(n):
+    root = int(math.sqrt(n))
+    for i in range(2, root + 1):
+        if n % i == 0:
+            return False
+    return True
 
 class NumberstreamConfiguration:
 
     def __init__(self, services):
         self.services = services
-        cache_data = services.get_data(&quot;prime_factors&quot;)
+        self.prime_factor_cache = None
+
+    async def load(self):
+        cache_data = self.services.get_data(&quot;prime_factors&quot;)
         self.prime_factor_cache = pickle.loads(cache_data) if cache_data else {}
         self.services.set_status_info(f&quot;loaded cache ({len(self.prime_factor_cache)} items)&quot;)
 
@@ -380,24 +391,8 @@ class NumberstreamConfiguration:
     def set_prime_factors(self, n, factors):
         self.prime_factor_cache[n] = factors
 
-    def close(self):
-        self.services.set_data(&quot;prime_factors&quot;, pickle.dumps(self.prime_factor_cache))
-        self.services.set_status_info(f&quot;saved cache ({len(self.prime_factor_cache)} items)&quot;)
-</code></pre>
-<p>The configuration is then accessed by node#s via the get_configuration service method.  Completing the definition of <code>PrimeFactorsNode</code>:</p>
-<pre><code class="language-py">class PrimeFactorsNode:
-
-    ...
-
-    def is_prime(self,n):
-        root = int(math.sqrt(n))
-        for i in range(2, root + 1):
-            if n % i == 0:
-                return False
-        return True
-
     def find_prime_factors(self,n):
-        factors = self.services.get_configuration().get_prime_factors(n) or []
+        factors = self.get_prime_factors(n) or []
         if not factors:
             i = 2
             r = n
@@ -405,17 +400,28 @@ class NumberstreamConfiguration:
                 if r % i == 0:
                     factors.append(i)
                     r //= i
-                    if self.is_prime(r):
+                    if is_prime(r):
                         break
                 else:
                     i += 1
             if r &gt; 1:
                 factors.append(r)
-            assert (reduce(lambda x, y: x * y, factors, 1) == n and all(self.is_prime(f) for f in factors))
-            self.services.get_configuration().set_prime_factors(n, factors)
+            assert (reduce(lambda x, y: x * y, factors, 1) == n and all(is_prime(f) for f in factors))
+            self.set_prime_factors(n, factors)
         return factors
-    ...
+
+    def close(self):
+        self.services.set_data(&quot;prime_factors&quot;, pickle.dumps(self.prime_factor_cache))
+        self.services.set_status_info(f&quot;saved cache ({len(self.prime_factor_cache)} items)&quot;)
+
+
+
+
+
+
+
 </code></pre>
+<p>The configuration is then accessed by nodes via the get_configuration service method.  </p>
 <p>For more details on the methods that a node or configuration can implement, see</p>
 <ul>
 <li><a href="node_api/">Node abstract base class API documentation</a></li>
@@ -462,7 +468,7 @@ links:
 - n0:data_out =&gt; n1:data_in
 - n1:data_out =&gt; n2:integerlist_data_in
 </code></pre>
-<p>This can then be imported using the following API calls</p>
+<p>This YAML file can then be imported using the following API calls</p>
 <pre><code class="language-py">from hyrrokkin.api.topology import Topology
 from hyrrokkin.utils.yaml_importer import import_from_yaml
 
@@ -627,5 +633,5 @@ print(json.dumps(ep.parse(&quot;10 * sin(pi)&quot;),indent=2))
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2024-11-24 20:54:26.421418+00:00
+Build Date UTC : 2025-01-05 16:03:19.438481+00:00
 -->

@@ -41,6 +41,10 @@ class Wrapper:
     def get_datastore_utils(self):
         return self.datastore_utils
 
+    async def load(self):
+        if self.instance is not None and hasattr(self.instance, "load"):
+            await self.instance.load()
+
     def open_client(self, client_id, client_options, client_service_class):
         if isinstance(client_id,list):
             client_id = tuple(client_id)

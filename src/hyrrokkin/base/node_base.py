@@ -37,6 +37,13 @@ class NodeBase:
         pass
 
     @abstractmethod
+    async def load(self):
+        """
+        Load any resources associated with this Configuration
+        """
+        pass
+
+    @abstractmethod
     def reset_run(self):
         """
         Called when this instance's node is about to be re-run
