@@ -93,7 +93,9 @@ class RemoteExecutionWorker:
         elif action == "add_link":
             await self.engine.add_link(control_packet["link_id"],control_packet["from_node_id"],control_packet["from_port"],
                                          control_packet["to_node_id"], control_packet["to_port"], control_packet["loading"])
-        elif action == "start_execution":
+        elif action == "pause":
+            self.engine.pause()
+        elif action == "resume":
             self.engine.resume()
         elif action == "close_worker":
             self.running = False

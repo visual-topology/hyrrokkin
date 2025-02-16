@@ -90,9 +90,11 @@ class ExecutionEngine():
 
     def pause(self):
         self.paused = True
+        print("paused")
 
     def resume(self):
         self.paused = False
+        print("resumed")
         self.dispatch()
 
     async def run_coro(self, terminate_on_complete):

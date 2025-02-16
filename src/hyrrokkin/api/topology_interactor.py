@@ -81,6 +81,9 @@ class TopologyInteractor:
     def resume(self):
         self.executor.resume()
 
+    def restart(self):
+        self.executor.restart()
+
     def run(self, execution_complete_callback) -> None:
         """
         Start and wait for the execution to be terminated (by calling the stop method)

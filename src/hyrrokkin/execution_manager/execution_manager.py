@@ -56,6 +56,7 @@ class ExecutionManager:
         self.terminate_on_complete = False
         self.logger = logging.getLogger("remote_graph_executor")
         self.in_process = in_process
+        self.restarting = False
 
     def is_paused(self):
         return self.paused
@@ -181,7 +182,11 @@ class ExecutionManager:
         return self.count_failed == 0
 
     def start(self):
-        self.run(terminate_on_complete=False)
+        while True:
+            self.run(terminate_on_complete=False)
+            if not self.restarting:
+                break
+            self.restarting = False
 
     def send_message(self, *message_parts):
         if self.running:
@@ -271,10 +276,9 @@ class ExecutionManager:
     def notify_output(self, node_id, output_port, value):
         self.output_listeners[(node_id, output_port)](value)
 
-    def stop(self,hard=False):
+    def stop(self):
         self.logger.info("stopping")
         self.close_worker()
-        # self.runner.stop(hard=hard)
 
     def get_pid(self):
         return self.pid
@@ -286,14 +290,20 @@ class ExecutionManager:
         self.output_listeners = {}
 
     def pause(self):
+        self.paused = True
         self.send_message({
             "action": "pause"
         })
 
     def resume(self):
+        self.paused = False
         self.send_message({
             "action": "resume"
         })
+
+    def restart(self):
+        self.restarting = True
+        self.runner.stop(True)
 
     def attach_client(self, target_id, target_type, client_id, client_options, client_service_classes):
         self.detach_client(target_id, target_type, client_id)  # in case a client with the same id is already connected to the target
@@ -328,12 +338,9 @@ class ExecutionManager:
             link = self.network.get_link(link_id)
             self.add_link(link, loading=True)
 
-        self.start_execution()
+        if not self.paused:
+            self.resume()
 
-    def start_execution(self):
-        self.send_message({
-            "action": "start_execution"
-        })
 
     def close_worker(self):
         self.send_message({"action": "close_worker"})
@@ -384,7 +391,6 @@ class ExecutionManager:
         self.send_message({
             "action": "clear"
         })
-
 
     def message_update(self, target_id, client_id, *message_content):
         # called to send a message from a node/configuration to an execution client
