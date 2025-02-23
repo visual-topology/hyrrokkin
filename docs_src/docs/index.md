@@ -45,10 +45,10 @@ Each package can define a configuration class - all node instances within a topo
 Each Package, and the Link Types, Node Types it contains, is specified in a JSON formatted document that represents the schema of that Package.
 
 ```
---8<-- "../src/hyrrokkin/example_packages/numberstream/schema.json"
+--8<-- "../src/hyrrokkin/example_packages/numbergraph/schema.json"
 ```
 
-When refering to a link type, the package id should be used as a prefix, `<package-id>:<link-type-id>`.  In this example, `numberstream:integer` refers to the link type `number` defined in the `numberstream` example package.  This allows packages to refer to link types defined in other packages when defining nodes.
+When refering to a link type, the package id should be used as a prefix, `<package-id>:<link-type-id>`.  In this example, `numbergraph:integer` refers to the link type `number` defined in the `numbergraph` example package.  This allows packages to refer to link types defined in other packages when defining nodes.
 
 Each Node Type is associated with the following information:
 
@@ -62,7 +62,7 @@ Each Node Type is associated with the following information:
 When a node is constructed, the constructor is passed a service API object, providing various useful services.  
 
 ``` py
---8<-- "../src/hyrrokkin/example_packages/numberstream/nodes/prime_factors_node.py"
+--8<-- "../src/hyrrokkin/example_packages/numbergraph/nodes/prime_factors_node.py"
 ```
 
 ### Persisting node properties
@@ -70,7 +70,7 @@ When a node is constructed, the constructor is passed a service API object, prov
 Consider a node which supplies an integer values via an output port `data_out`
 
 ```
---8<-- "../src/hyrrokkin/example_packages/numberstream/nodes/number_input_node.py"
+--8<-- "../src/hyrrokkin/example_packages/numbergraph/nodes/number_input_node.py"
 ```
 
 The integer value is stored in a `value` property and the services api `get_property(name,value)` and `set_property(name,value)` are used to retrieve and update the value.
@@ -108,7 +108,7 @@ The `NumberDisplayNode` implements some code to collect input values and report 
 When a topology is loaded, or when any upstream node in the topology is re-run, the node's inputs will be collected and its run method will be called.  But, before this happens, the node's `reset_run` method will be called, if it is implemented.  A node can implement this method to inform any clients that the node's current results are invalid and the node will soon be re-run.  
 
 ``` py
---8<-- "../src/hyrrokkin/example_packages/numberstream/nodes/number_display_node.py"
+--8<-- "../src/hyrrokkin/example_packages/numbergraph/nodes/number_display_node.py"
 ```
 
 The `reset_run` method is called as soon as the framework is aware that the node's `run` method will need to be called. 
@@ -126,7 +126,7 @@ The package configuration is defined in a similar way to a node, with a construc
 In this example, the configuration can offer a shared service to compute and cache factorisations, that can be accessed by all nodes within the topology.
 
 ``` py
---8<-- "../src/hyrrokkin/example_packages/numberstream/numberstream_configuration.py"
+--8<-- "../src/hyrrokkin/example_packages/numbergraph/numbergraph_configuration.py"
 ```
 
 The configuration is then accessed by nodes via the get_configuration service method.  
@@ -150,13 +150,13 @@ Hyrrokkin provides an API for creating, running and loading and saving topologie
 from hyrrokkin.api.topology import Topology
 
 # provide the resource path to the package containing the schema file
-numberstream_package = "hyrrokkin.example_packages.numberstream"
+numbergraph_package = "hyrrokkin.example_packages.numbergraph"
 
-t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
+t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numbergraph_package])
 
-t.add_node("n0", "numberstream:number_input_node", properties={"value": 99})
-t.add_node("n1", "numberstream:prime_factors_node")
-t.add_node("n2", "numberstream:number_display_node")
+t.add_node("n0", "numbergraph:number_input_node", properties={"value": 99})
+t.add_node("n1", "numbergraph:prime_factors_node")
+t.add_node("n2", "numbergraph:number_display_node")
 
 t.add_link("l0", "n0", "data_out", "n1", "data_in")
 t.add_link("l1", "n1", "data_out", "n2", "integerlist_data_in")
@@ -169,17 +169,17 @@ The same topology can be expressed using a YAML file
 metadata:
   name: test topology
 configuration:
-  numberstream:
+  numbergraph:
     readonly: false
 nodes:
   n0:
-    type: numberstream:number_input_node
+    type: numbergraph:number_input_node
     properties:
       value: 99
   n1:
-    type: numberstream:prime_factors_node
+    type: numbergraph:prime_factors_node
   n2:
-    type: numberstream:number_display_node
+    type: numbergraph:number_display_node
 links:
 - n0:data_out => n1:data_in
 - n1:data_out => n2:integerlist_data_in
@@ -192,9 +192,9 @@ from hyrrokkin.api.topology import Topology
 from hyrrokkin.utils.yaml_importer import import_from_yaml
 
 # provide the resource path to the package containing the schema file
-numberstream_package = "hyrrokkin.example_packages.numberstream"
+numbergraph_package = "hyrrokkin.example_packages.numbergraph"
 
-t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
+t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numbergraph_package])
 with open("topology.yaml") as f:
     import_from_yaml(t,f)
 t.run()
@@ -222,9 +222,9 @@ A topology including its properties and data can be saved to and loaded from a s
 from hyrrokkin.api.topology import Topology
 
 # provide the resource path to the package containing the schema file
-numberstream_package = "hyrrokkin.example_packages.numberstream"
+numbergraph_package = "hyrrokkin.example_packages.numbergraph"
 
-t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
+t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numbergraph_package])
 # create or import the topology
 t.run()
 with open("topology.zip","wb") as f:
@@ -237,9 +237,9 @@ To load from a saved topology:
 from hyrrokkin.api.topology import Topology
 
 # provide the resource path to the package containing the schema file
-numberstream_package = "hyrrokkin.example_packages.numberstream"
+numbergraph_package = "hyrrokkin.example_packages.numbergraph"
 
-t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
+t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numbergraph_package])
 with open("topology.zip","rb") as f:
     t.load(f)
 t.run()
@@ -252,16 +252,14 @@ from hyrrokkin.api.topology import Topology
 from hyrrokkin.utils.yaml_exporter import export_to_yaml
 
 # provide the resource path to the package containing the schema file
-numberstream_package = "hyrrokkin.example_packages.numberstream"
+numbergraph_package = "hyrrokkin.example_packages.numbergraph"
 
-t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
+t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numbergraph_package])
 with open("topology.zip","rb") as f:
     t.load(f)
 with open("topology.yaml","w") as f:
     export_to_yaml(t,f)
 ```
-
-
 
 For full details on the topology API, see:
 
@@ -274,7 +272,7 @@ The Hyrrokkin package will install a `topology_runner` CLI command.  Some typica
 Import a topology from zip and run it:
 
 ``` bash
-topology_runner --package hyrrokkin.example_packages.numberstream \      
+topology_runner --package hyrrokkin.example_packages.numbergraph \      
                 --execution-folder /tmp/execution_test \
                 --import topology.zip --run
 ```
@@ -282,7 +280,7 @@ topology_runner --package hyrrokkin.example_packages.numberstream \
 Import a topology from yaml, run it and save the topology (including data) to a zip file:
 
 ``` bash
-topology_runner --package hyrrokkin.example_packages.numberstream \
+topology_runner --package hyrrokkin.example_packages.numbergraph \
                 --execution-folder /tmp/execution_test \
                 --import topology.yaml \
                 --run --export topology.zip
@@ -291,7 +289,7 @@ topology_runner --package hyrrokkin.example_packages.numberstream \
 Convert a topology from zip format to yaml format, but do not run it:
 
 ``` bash
-topology_runner --package hyrrokkin.example_packages.numberstream \
+topology_runner --package hyrrokkin.example_packages.numbergraph \
                 --execution-folder /tmp/execution_test \
                 --import topology.zip \
                 --export topology.yaml

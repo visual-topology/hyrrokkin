@@ -17,22 +17,37 @@
 #   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import sys
-import subprocess
+import argparse
+import json
+import os.path
+import logging
+
+from jsonschema import validate
+
+logger = logging.getLogger("package_validation")
+
+schema_folder = os.path.split("__file__")[0]
+
+with open(os.path.join(schema_folder, "package_schema.json")) as f:
+    schema = json.loads(f.read())
+
+def validate_package_schema_json(path_to_json):
+    with open(path_to_json) as f:
+        try:
+            logger.info(f"Validating: {path_to_json}")
+            o = json.loads(f.read())
+            validate(o,schema)
+            logger.info(f"Validated: {path_to_json}")
+            return True
+        except:
+            logger.exception(f"Validation failed for: {path_to_json}")
+            return False
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_file")
+    args = parser.parse_args()
+    validate_package_schema_json(args.input_file)
 
 
-def run(in_folder, script_path):
-    cmd = sys.executable
-    sp = [cmd, script_path]
-
-    sub = subprocess.Popen(sp, cwd=in_folder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    output = ""
-    return_code = None
-    while return_code is None:
-        output += sub.stdout.readline()
-        return_code = sub.poll()
-
-    output += sub.stdout.read()
-    sub.stdout.close()
-
-    return output

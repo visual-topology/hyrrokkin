@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "package_schema.json",
+  "title": "JSONSchema description of Packages",
+  "description": "Specify how Packages are defined in JSON",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "metadata",
+    "node_types"
+  ],
+  "$defs": {
+    "link_type": {
+      "description": "Specify how Link Types are defined in JSON",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "description": "Attach metadata to this link type",
+          "required": [
+            "name"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Provide a short descriptive name for this link type"
+            },
+            "description": {
+              "type": "string",
+              "description": "Provide a short description (~1 paragraph) of the purpose of this link type"
+            }
+          }
+        },
+        "display": {
+          "type": "object",
+          "properties": {
+            "colour": {
+              "type": "string",
+              "description": "Specify a colour for this link type, used when drawing networks as a diagram"
+            }
+          }
+        }
+      }
+    },
+    "node_type": {
+      "description": "Specify how Node Types are defined in JSON",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "description": "Attach metadata to this node type",
+          "required": [
+            "name"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Provide a short descriptive name for this node type"
+            },
+            "description": {
+              "type": "string",
+              "description": "Provide a short description (~1 paragraph) of the purpose of this node type"
+            }
+          }
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "whether this node type is enabled"
+        },
+        "resources": {
+          "type": "array",
+          "description": "Provide a list of the paths/urls of resource dependencies, as understood by the executor",
+          "items": {
+            "type": "string"
+          }
+        },
+        "input_ports": {
+          "type": "object",
+          "description": "Specify a mapping from an input port name to its definition",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "link_type": {
+                  "type": "string",
+                  "description": "the link type of the port, qualified with the package name"
+                },
+                "allow_multiple_connections": {
+                  "type": "boolean",
+                  "description": "whether this port allows more than one connection to other ports"
+                }
+              }
+            }
+          }
+        },
+        "output_ports": {
+          "type": "object",
+          "description": "Specify a mapping from an output port name to its definition",
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "properties": {
+                "link_type": {
+                  "type": "string",
+                  "description": "the link type of the port, qualified with the package name"
+                },
+                "allow_multiple_connections": {
+                  "type": "boolean",
+                  "description": "whether this port allows more than one connection to other ports"
+                }
+              }
+            }
+          }
+        },
+        "classname": {
+          "type": "string",
+          "description": "specify the class implementing this node, for a python executor this would typically look like package.subpackage.module.Class"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Provide a unique id for this package"
+    },
+    "executor": {
+      "type": "string"
+    },
+    "configuration": {
+      "type": "object",
+      "description": "Specify code that handles the package configuration",
+      "properties": {
+        "classname": {
+          "description": "specify the class implementing this packages's configuration, for example (executor=python) this would look like package.subpackage.module.Class"
+        }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "description": "Provide a list of the paths/urls of resource dependencies, as understood by the executor",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Attach metadata to this package",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Provide a short descriptive name of this package"
+        },
+        "description": {
+          "type": "string",
+          "description": "Provide a short description (~1 paragraph) of the purpose of this package"
+        },
+        "version": {
+          "type": "string",
+          "description": "Specify the version of the package"
+        }
+      }
+    },
+    "display": {
+      "type": "object",
+      "description": "Specify how nodes in this package are displayed in a network diagram",
+      "properties": {
+        "icon": {
+          "description": "Provide the URL of a SVG icon, relative to the package",
+          "type": "string"
+        },
+        "corners": {
+          "description": "Define the shape of the node, in terms of the number of corners",
+          "type": "integer"
+        },
+        "style": {
+          "description": "Specify CSS styles to apply to this node's icon",
+          "type": "string"
+        }
+      }
+    },
+    "node_types": {
+      "type": "object",
+      "description": "mapping from a node type id to its definition",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "$ref": "#/$defs/node_type"
+        }
+      }
+    },
+    "link_types": {
+      "type": "object",
+      "description": "mapping from a link type id to its definition",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "$ref": "#/$defs/link_type"
+        }
+      }
+    }
+  }
+}

@@ -26,23 +26,23 @@ from hyrrokkin.utils.yaml_exporter import export_to_yaml
 
 logging.basicConfig(level=logging.INFO)
 
-numberstream_package = "hyrrokkin.example_packages.numberstream"
+numbergraph_package = "hyrrokkin.example_packages.numbergraph"
 
 test_yaml = """
 metadata:
   name: test topology
 configuration:
-  numberstream: {}
+  numbergraph: {}
 nodes:
   n0:
-    type: numberstream:number_input_node
+    type: numbergraph:number_input_node
     properties:
       value: 99
   n1:
-    type: numberstream:prime_factors_node
+    type: numbergraph:prime_factors_node
     properties: {}
   n2:
-    type: numberstream:number_display_node
+    type: numbergraph:number_display_node
     properties: {}
 links:
 - n0 => n1
@@ -56,12 +56,12 @@ class YamlImportTests(unittest.TestCase):
         super().__init__(*args, **kwargs)
 
     def test1(self):
-        t = Topology(tempfile.mkdtemp(),[numberstream_package])
+        t = Topology(tempfile.mkdtemp(),[numbergraph_package])
         t.set_metadata({"name":"test topology"})
 
-        t.add_node("n0", "numberstream:number_input_node", {"value": 99})
-        t.add_node("n1", "numberstream:prime_factors_node", {})
-        t.add_node("n2", "numberstream:number_display_node", {})
+        t.add_node("n0", "numbergraph:number_input_node", {"value": 99})
+        t.add_node("n1", "numbergraph:prime_factors_node", {})
+        t.add_node("n2", "numbergraph:number_display_node", {})
 
         t.add_link("l0", "n0", "data_out", "n1", "data_in")
         t.add_link("l1", "n1", "data_out", "n2", "integerlist_data_in")

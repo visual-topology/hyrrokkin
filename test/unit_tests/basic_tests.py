@@ -22,7 +22,7 @@ import tempfile
 
 from hyrrokkin.api.topology import Topology
 
-numberstream_package = "hyrrokkin.example_packages.numberstream"
+numbergraph_package = "hyrrokkin.example_packages.numbergraph"
 
 class BasicTests(unittest.TestCase):
 
@@ -31,10 +31,10 @@ class BasicTests(unittest.TestCase):
 
     def __get_test_topology(self, status_handler=None, execution_handler=None):
 
-        t = Topology(tempfile.mkdtemp(), [numberstream_package], status_handler = status_handler, execution_handler = execution_handler)
-        t.add_node("n0", "numberstream:number_input_node", {"value": 99})
-        t.add_node("n1", "numberstream:prime_factors_node", {})
-        t.add_node("n2", "numberstream:number_display_node", {})
+        t = Topology(tempfile.mkdtemp(), [numbergraph_package], status_handler = status_handler, execution_handler = execution_handler)
+        t.add_node("n0", "numbergraph:number_input_node", {"value": 99})
+        t.add_node("n1", "numbergraph:prime_factors_node", {})
+        t.add_node("n2", "numbergraph:number_display_node", {})
 
         t.add_link("l0", "n0", "data_out", "n1", "data_in")
         t.add_link("l1", "n1", "data_out", "n2", "integerlist_data_in")
@@ -43,15 +43,15 @@ class BasicTests(unittest.TestCase):
     def test1(self):
         status_messages = []
         execution_events = []
-        t = Topology(tempfile.mkdtemp(),[numberstream_package], status_handler=lambda *msg: status_messages.append(msg),
+        t = Topology(tempfile.mkdtemp(),[numbergraph_package], status_handler=lambda *msg: status_messages.append(msg),
                      execution_handler=lambda *event: execution_events.append(event))
-        t.add_node("n1", "numberstream:prime_factors_node",{})
+        t.add_node("n1", "numbergraph:prime_factors_node",{})
 
         test_outputs = []
         self.assertTrue(t.run(inject_input_values={"n1:data_in":99},output_listeners={"n1:data_out": lambda v: test_outputs.append(v)}))
         self.assertEqual(len(test_outputs),1)
         self.assertEqual(test_outputs[0],[3,3,11])
-        self.assertEqual(status_messages,[('numberstream', 'configuration', 'loaded cache (0 items)', 'info'), ('numberstream', 'configuration', 'saved cache (1 items)', 'info')])
+        self.assertEqual(status_messages,[('numbergraph', 'configuration', 'loaded cache (0 items)', 'info'), ('numbergraph', 'configuration', 'saved cache (1 items)', 'info')])
         self.assertEqual(list(map(lambda x:x[1:],execution_events)),[('n1', 'pending', None, False), ('n1', 'executing', None, False), ('n1', 'executed', None, False)])
 
     def test2(self):
@@ -63,7 +63,7 @@ class BasicTests(unittest.TestCase):
         self.assertTrue(t.run(output_listeners={"n1:data_out": lambda v: test_outputs.append(v)}))
         self.assertEqual(len(test_outputs), 1)
         self.assertEqual(test_outputs[0],[3,3,11])
-        self.assertEqual(status_messages,[('numberstream', 'configuration', 'loaded cache (0 items)', 'info'), ('n2', 'node', '0 input integers, 1 input integerlists', 'info'), ('n2', 'node', '[[3, 3, 11]]', 'info'), ('numberstream', 'configuration', 'saved cache (1 items)', 'info')])
+        self.assertEqual(status_messages,[('numbergraph', 'configuration', 'loaded cache (0 items)', 'info'), ('n2', 'node', '0 input integers, 1 input integerlists', 'info'), ('n2', 'node', '[[3, 3, 11]]', 'info'), ('numbergraph', 'configuration', 'saved cache (1 items)', 'info')])
         self.assertEqual(list(map(lambda x:x[1:],execution_events)),[('n0', 'pending', None, False), ('n1', 'pending', None, False), ('n2', 'pending', None, False), ('n0', 'executing', None, False), ('n0', 'executed', None, False), ('n1', 'executing', None, False), ('n1', 'executed', None, False), ('n2', 'executing', None, False), ('n2', 'executed', None, False)])
 
         status_messages = []
@@ -71,7 +71,7 @@ class BasicTests(unittest.TestCase):
         test_outputs = []
         self.assertTrue(t.run(output_listeners={"n1:data_out":lambda v: test_outputs.append(v)}))
         self.assertEqual(len(test_outputs), 1)
-        self.assertEqual(status_messages,[('numberstream', 'configuration', 'loaded cache (1 items)', 'info'), ('n2', 'node', '0 input integers, 1 input integerlists', 'info'), ('n2', 'node', '[[3, 3, 3, 37]]', 'info'), ('numberstream', 'configuration', 'saved cache (2 items)', 'info')])
+        self.assertEqual(status_messages,[('numbergraph', 'configuration', 'loaded cache (1 items)', 'info'), ('n2', 'node', '0 input integers, 1 input integerlists', 'info'), ('n2', 'node', '[[3, 3, 3, 37]]', 'info'), ('numbergraph', 'configuration', 'saved cache (2 items)', 'info')])
         self.assertEqual(test_outputs[0], [3, 3, 3, 37])
 
     def test3(self):
@@ -98,7 +98,7 @@ class BasicTests(unittest.TestCase):
             with open(saved.name, "wb") as f:
                 t.save_zip(f)
 
-            t2 = Topology(tempfile.mkdtemp(),[numberstream_package])
+            t2 = Topology(tempfile.mkdtemp(),[numbergraph_package])
 
             with open(saved.name, "rb") as f:
                 t2.load_zip(f)
@@ -111,14 +111,14 @@ class BasicTests(unittest.TestCase):
     def test5(self):
 
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as saved:
-            t = Topology(tempfile.mkdtemp(), [numberstream_package])
-            t.add_node("n0", "numberstream:number_input_node", {"value": 99})
+            t = Topology(tempfile.mkdtemp(), [numbergraph_package])
+            t.add_node("n0", "numbergraph:number_input_node", {"value": 99})
 
             # test the merging of two topologies
             with open(saved.name, "wb") as f:
                 t.save_zip(f)
 
-            t2 = Topology(tempfile.mkdtemp(),[numberstream_package])
+            t2 = Topology(tempfile.mkdtemp(),[numbergraph_package])
 
             with open(saved.name, "rb") as f:
                 node_renamings1 = t2.load_zip(f)
@@ -139,11 +139,11 @@ class BasicTests(unittest.TestCase):
     def test6(self):
         status_messages = []
         execution_events = []
-        t = Topology(tempfile.mkdtemp(), [numberstream_package], status_handler=lambda *msg:status_messages.append(msg),
+        t = Topology(tempfile.mkdtemp(), [numbergraph_package], status_handler=lambda *msg:status_messages.append(msg),
                      execution_handler=lambda *event: execution_events.append(event))
-        t.add_node("n0", "numberstream:number_input_node", {"value": 1})
-        t.add_node("n1", "numberstream:prime_factors_node", {})
-        t.add_node("n2", "numberstream:number_display_node", {})
+        t.add_node("n0", "numbergraph:number_input_node", {"value": 1})
+        t.add_node("n1", "numbergraph:prime_factors_node", {})
+        t.add_node("n2", "numbergraph:number_display_node", {})
 
         t.add_link("l0", "n0", "data_out", "n1", "data_in")
         t.add_link("l1", "n1", "data_out", "n2", "integerlist_data_in")

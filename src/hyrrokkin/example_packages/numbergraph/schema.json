@@ -1,12 +1,12 @@
 {
-    "id": "numberstream",
+    "id": "numbergraph",
     "metadata": {
-        "name": "Number Stream",
+        "name": "Number Graph",
         "version": "0.0.1",
         "description": "a small example package for manipulating numbers"
     },
     "configuration": {
-        "classname": "numberstream_configuration.NumberstreamConfiguration"
+        "classname": "numbergraph_configuration.NumbergraphConfiguration"
     },
     "node_types": {
         "number_input_node": {
@@ -16,7 +16,7 @@
             },
             "output_ports": {
                 "data_out": {
-                    "link_type": "numberstream:integer"
+                    "link_type": "numbergraph:integer"
                 }
             },
             "classname": "nodes.number_input_node.NumberInputNode"
@@ -28,13 +28,13 @@
             },
             "input_ports": {
                 "data_in": {
-                    "link_type": "numberstream:integer",
+                    "link_type": "numbergraph:integer",
                     "allow_multiple_connections": false
                 }
             },
             "output_ports": {
                 "data_out": {
-                    "link_type": "numberstream:integerlist"
+                    "link_type": "numbergraph:integerlist"
                 }
             },
             "classname": "nodes.prime_factors_node.PrimeFactorsNode"
@@ -46,10 +46,10 @@
             },
             "input_ports": {
                 "integer_data_in": {
-                    "link_type": "numberstream:integer"
+                    "link_type": "numbergraph:integer"
                 },
                 "integerlist_data_in": {
-                    "link_type": "numberstream:integerlist"
+                    "link_type": "numbergraph:integerlist"
                 }
             },
             "output_ports": {

@@ -9,7 +9,7 @@ def is_prime(n):
             return False
     return True
 
-class NumberstreamConfiguration:
+class NumbergraphConfiguration:
 
     def __init__(self, services):
         self.services = services
