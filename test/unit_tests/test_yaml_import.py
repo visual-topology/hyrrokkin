@@ -26,16 +26,16 @@ from hyrrokkin.utils.yaml_importer import import_from_yaml
 
 logging.basicConfig(level=logging.INFO)
 
-numberstream_package = "hyrrokkin.example_packages.numberstream"
+numbergraph_package = "hyrrokkin.example_packages.numbergraph"
 
 test_yaml = """
 nodes:
   n0:
-    type: numberstream:number_input_node
+    type: numbergraph:number_input_node
     properties:
       value: 200
   n1:
-    type: numberstream:prime_factors_node
+    type: numbergraph:prime_factors_node
     properties: {}
     
 links: 
@@ -49,7 +49,7 @@ class YamlImportTests(unittest.TestCase):
 
 
     def test1(self):
-        t = Topology(tempfile.mkdtemp(),[numberstream_package])
+        t = Topology(tempfile.mkdtemp(),[numbergraph_package])
         with tempfile.NamedTemporaryFile(suffix=".yaml", delete=True) as yamlf:
             with open(yamlf.name,"w") as of:
                 of.write(test_yaml)

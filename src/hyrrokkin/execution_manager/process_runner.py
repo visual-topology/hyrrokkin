@@ -11,15 +11,11 @@ import threading
 
 class ProcessRunner(threading.Thread):
 
-    def __init__(self, host_name, port):
+    def __init__(self, args, exit_callback=None):
         super().__init__()
-        args = ["--port", str(port), "--host", str(host_name)]
-
         self.return_code = None
-        cmd = sys.executable
-        sp = [cmd, "-m", "hyrrokkin.executor.execution_worker"] + args
-
-        self.sub = subprocess.Popen(sp, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.sub = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.exit_callback = exit_callback
 
     def run(self):
 
@@ -28,6 +24,9 @@ class ProcessRunner(threading.Thread):
             self.return_code = self.sub.poll()
 
         self.handle_output(self.sub.stdout.read())
+        print("Stopped")
+        if self.exit_callback:
+            self.exit_callback()
 
     def handle_output(self,output):
         if output:

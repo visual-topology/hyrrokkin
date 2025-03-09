@@ -21,6 +21,7 @@ import queue
 import socket
 import threading
 import logging
+import sys
 
 from .process_runner import ProcessRunner
 from .thread_runner import ThreadRunner
@@ -90,7 +91,8 @@ class ExecutionManager:
         return self.stop_on_execution_complete
 
     def __start_remote_graph_process(self):
-        runner = ProcessRunner(self.host_name, self.port)
+        args = [sys.executable, "-m", "hyrrokkin.executor.execution_worker", "--port", str(self.port), "--host", str(self.host_name)]
+        runner = ProcessRunner(args)
         runner.daemon = True
         runner.start()
         return runner

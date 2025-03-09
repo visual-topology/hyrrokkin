@@ -372,6 +372,8 @@ class ExecutionEngine():
                 self.execution_complete_callback()
 
     def can_execute(self, node_id):
+        if node_id in self.executing_nodes:
+            return False
         for (output_node_id, output_port) in self.get_inputs_to(node_id):
             if output_node_id not in self.executed_nodes:
                 return False
