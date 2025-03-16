@@ -57,7 +57,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#clients-and-updating-status">Clients and updating status</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#node-lifecycle-the-reset_run-connections_changed-and-close-methods">Node lifecycle - the reset_run, connections_changed and close methods.</a>
+    <li class="toctree-l3"><a class="reference internal" href="#node-lifecycle-the-load-reset_run-run-and-close-methods">Node lifecycle - the load, reset_run, run and close methods.</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#defining-the-package-configuration">Defining the package configuration</a>
     </li>
@@ -153,14 +153,14 @@
 <p>Each package can define a configuration class - all node instances within a topology that belong to the package.</p>
 <p>Each Package, and the Link Types, Node Types it contains, is specified in a JSON formatted document that represents the schema of that Package.</p>
 <pre><code>{
-    &quot;id&quot;: &quot;numberstream&quot;,
+    &quot;id&quot;: &quot;numbergraph&quot;,
     &quot;metadata&quot;: {
-        &quot;name&quot;: &quot;Number Stream&quot;,
+        &quot;name&quot;: &quot;Number Graph&quot;,
         &quot;version&quot;: &quot;0.0.1&quot;,
         &quot;description&quot;: &quot;a small example package for manipulating numbers&quot;
     },
     &quot;configuration&quot;: {
-        &quot;classname&quot;: &quot;numberstream_configuration.NumberstreamConfiguration&quot;
+        &quot;classname&quot;: &quot;numbergraph_configuration.NumbergraphConfiguration&quot;
     },
     &quot;node_types&quot;: {
         &quot;number_input_node&quot;: {
@@ -170,7 +170,7 @@
             },
             &quot;output_ports&quot;: {
                 &quot;data_out&quot;: {
-                    &quot;link_type&quot;: &quot;numberstream:integer&quot;
+                    &quot;link_type&quot;: &quot;numbergraph:integer&quot;
                 }
             },
             &quot;classname&quot;: &quot;nodes.number_input_node.NumberInputNode&quot;
@@ -182,13 +182,13 @@
             },
             &quot;input_ports&quot;: {
                 &quot;data_in&quot;: {
-                    &quot;link_type&quot;: &quot;numberstream:integer&quot;,
+                    &quot;link_type&quot;: &quot;numbergraph:integer&quot;,
                     &quot;allow_multiple_connections&quot;: false
                 }
             },
             &quot;output_ports&quot;: {
                 &quot;data_out&quot;: {
-                    &quot;link_type&quot;: &quot;numberstream:integerlist&quot;
+                    &quot;link_type&quot;: &quot;numbergraph:integerlist&quot;
                 }
             },
             &quot;classname&quot;: &quot;nodes.prime_factors_node.PrimeFactorsNode&quot;
@@ -200,10 +200,10 @@
             },
             &quot;input_ports&quot;: {
                 &quot;integer_data_in&quot;: {
-                    &quot;link_type&quot;: &quot;numberstream:integer&quot;
+                    &quot;link_type&quot;: &quot;numbergraph:integer&quot;
                 },
                 &quot;integerlist_data_in&quot;: {
-                    &quot;link_type&quot;: &quot;numberstream:integerlist&quot;
+                    &quot;link_type&quot;: &quot;numbergraph:integerlist&quot;
                 }
             },
             &quot;output_ports&quot;: {
@@ -227,7 +227,7 @@
     }
 }
 </code></pre>
-<p>When refering to a link type, the package id should be used as a prefix, <code>&lt;package-id&gt;:&lt;link-type-id&gt;</code>.  In this example, <code>numberstream:integer</code> refers to the link type <code>number</code> defined in the <code>numberstream</code> example package.  This allows packages to refer to link types defined in other packages when defining nodes.</p>
+<p>When refering to a link type, the package id should be used as a prefix, <code>&lt;package-id&gt;:&lt;link-type-id&gt;</code>.  In this example, <code>numbergraph:integer</code> refers to the link type <code>number</code> defined in the <code>numbergraph</code> example package.  This allows packages to refer to link types defined in other packages when defining nodes.</p>
 <p>Each Node Type is associated with the following information:</p>
 <ul>
 <li><code>classname</code> indicates which class implements the node's behaviour</li>
@@ -237,10 +237,37 @@
 </ul>
 <h3 id="the-node-constructor-and-the-run-method">The node constructor, and the run method</h3>
 <p>When a node is constructed, the constructor is passed a service API object, providing various useful services.  </p>
-<pre><code class="language-py">class PrimeFactorsNode:
+<pre><code class="language-py">import math
+
+class PrimeFactorsNode:
 
     def __init__(self,services):
         self.services = services
+
+    def is_prime(self,n):
+        root = int(math.sqrt(n))
+        for i in range(2, root + 1):
+            if n % i == 0:
+                return False
+        return True
+
+    def find_prime_factors(self,n):
+        factors = self.services.get_configuration().get_prime_factors(n) or []
+        if not factors:
+            i = 2
+            r = n
+            while True:
+                if r % i == 0:
+                    factors.append(i)
+                    r //= i
+                    if self.is_prime(r):
+                        break
+                else:
+                    i += 1
+            if r &gt; 1:
+                factors.append(r)
+            self.services.get_configuration().set_prime_factors(n, factors)
+        return factors
 
     async def run(self, inputs):
         input_values = inputs.get(&quot;data_in&quot;,[])
@@ -250,7 +277,7 @@
                 raise Exception(f&quot;input value {value} is invalid (not integer)&quot;)
             if value &lt; 2:
                 raise Exception(f&quot;input value {value} is invalid (&lt; 2)&quot;)
-            prime_factors = self.services.get_configuration().find_prime_factors(value)
+            prime_factors = self.find_prime_factors(value)
             return { &quot;data_out&quot;:prime_factors }
 
 
@@ -317,9 +344,10 @@ In general nodes may use data to persist the results of computation, for example
 </tr>
 </tbody>
 </table>
-<h3 id="node-lifecycle-the-reset_run-connections_changed-and-close-methods">Node lifecycle - the <code>reset_run</code>, <code>connections_changed</code> and <code>close</code> methods.</h3>
-<p>The <code>NumberDisplayNode</code> implements some code to collect input values and report thm to any connected clients.</p>
-<p>When a topology is loaded, or when any upstream node in the topology is re-run, the node's inputs will be collected and its run method will be called.  But, before this happens, the node's <code>reset_run</code> method will be called, if it is implemented.  A node can implement this method to inform any clients that the node's current results are invalid and the node will soon be re-run.  </p>
+<h3 id="node-lifecycle-the-load-reset_run-run-and-close-methods">Node lifecycle - the <code>load</code>, <code>reset_run</code>, <code>run</code> and <code>close</code> methods.</h3>
+<p>The <code>NumberDisplayNode</code> implements some code to collect input values and report them to any connected clients.</p>
+<p>When a topology is loaded, or when any upstream node in the topology is re-run, the node will be constructed and its <code>load</code> method, if implemented, will be called.</p>
+<p>As the topology is executed, the node's inputs will be collected and its <code>run</code> method will be called.  But, before this happens, the node's <code>reset_run</code> method will be called, if it is implemented.  A node can implement this method to inform any clients that the node's current results are invalid and the node will soon be re-run.  </p>
 <pre><code class="language-py">import json
 
 class NumberDisplayNode:
@@ -327,11 +355,6 @@ class NumberDisplayNode:
     def __init__(self, services):
         self.services = services
         self.clients = {}
-
-    def connections_changed(self, input_connection_counts, output_connection_counts):
-        nr_integer_inputs = input_connection_counts.get(&quot;integer_data_in&quot;,0)
-        nr_integerlist_inputs = input_connection_counts.get(&quot;integerlist_data_in&quot;,0)
-        self.services.set_status_info(f&quot;{nr_integer_inputs} input integers, {nr_integerlist_inputs} input integerlists&quot;)
 
     def reset_run(self):
         for client_id in self.clients:
@@ -354,24 +377,13 @@ class NumberDisplayNode:
         pass
 </code></pre>
 <p>The <code>reset_run</code> method is called as soon as the framework is aware that the node's <code>run</code> method will need to be called. </p>
-<p>When the topology is loaded or later updated, the number of links connected to a node's input and output ports may change.  </p>
-<p>A node may implement a <code>connections_changed</code> method to receive notifications providing this information when a topology is first loaded and later, if these connections change:</p>
 <p>A node may implement a <code>close</code> method to receive notifications when the node is removed from a topology</p>
 <h3 id="defining-the-package-configuration">Defining the package configuration</h3>
 <p>The package configuration is defined in a similar way to a node, with a constructor accepting a services object. and an optional load method which is called to load up any additional resources which are needed by the configuration and its nodes.</p>
-<p>In this example, the configuration can offer a shared service to compute and cache factorisations, that can be accessed by all nodes within the topology.</p>
+<p>In this example, the configuration can offer a service to store and retrieve factorisations, that can be accessed by all nodes.</p>
 <pre><code class="language-py">import pickle
-import math
-from functools import reduce
 
-def is_prime(n):
-    root = int(math.sqrt(n))
-    for i in range(2, root + 1):
-        if n % i == 0:
-            return False
-    return True
-
-class NumberstreamConfiguration:
+class NumbergraphConfiguration:
 
     def __init__(self, services):
         self.services = services
@@ -390,25 +402,6 @@ class NumberstreamConfiguration:
 
     def set_prime_factors(self, n, factors):
         self.prime_factor_cache[n] = factors
-
-    def find_prime_factors(self,n):
-        factors = self.get_prime_factors(n) or []
-        if not factors:
-            i = 2
-            r = n
-            while True:
-                if r % i == 0:
-                    factors.append(i)
-                    r //= i
-                    if is_prime(r):
-                        break
-                else:
-                    i += 1
-            if r &gt; 1:
-                factors.append(r)
-            assert (reduce(lambda x, y: x * y, factors, 1) == n and all(is_prime(f) for f in factors))
-            self.set_prime_factors(n, factors)
-        return factors
 
     def close(self):
         self.services.set_data(&quot;prime_factors&quot;, pickle.dumps(self.prime_factor_cache))
@@ -437,13 +430,13 @@ class NumberstreamConfiguration:
 <pre><code class="language-py">from hyrrokkin.api.topology import Topology
 
 # provide the resource path to the package containing the schema file
-numberstream_package = &quot;hyrrokkin.example_packages.numberstream&quot;
+numbergraph_package = &quot;hyrrokkin.example_packages.numbergraph&quot;
 
-t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
+t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numbergraph_package])
 
-t.add_node(&quot;n0&quot;, &quot;numberstream:number_input_node&quot;, properties={&quot;value&quot;: 99})
-t.add_node(&quot;n1&quot;, &quot;numberstream:prime_factors_node&quot;)
-t.add_node(&quot;n2&quot;, &quot;numberstream:number_display_node&quot;)
+t.add_node(&quot;n0&quot;, &quot;numbergraph:number_input_node&quot;, properties={&quot;value&quot;: 99})
+t.add_node(&quot;n1&quot;, &quot;numbergraph:prime_factors_node&quot;)
+t.add_node(&quot;n2&quot;, &quot;numbergraph:number_display_node&quot;)
 
 t.add_link(&quot;l0&quot;, &quot;n0&quot;, &quot;data_out&quot;, &quot;n1&quot;, &quot;data_in&quot;)
 t.add_link(&quot;l1&quot;, &quot;n1&quot;, &quot;data_out&quot;, &quot;n2&quot;, &quot;integerlist_data_in&quot;)
@@ -453,17 +446,17 @@ t.run()
 <pre><code class="language-yaml">metadata:
   name: test topology
 configuration:
-  numberstream:
+  numbergraph:
     readonly: false
 nodes:
   n0:
-    type: numberstream:number_input_node
+    type: numbergraph:number_input_node
     properties:
       value: 99
   n1:
-    type: numberstream:prime_factors_node
+    type: numbergraph:prime_factors_node
   n2:
-    type: numberstream:number_display_node
+    type: numbergraph:number_display_node
 links:
 - n0:data_out =&gt; n1:data_in
 - n1:data_out =&gt; n2:integerlist_data_in
@@ -473,9 +466,9 @@ links:
 from hyrrokkin.utils.yaml_importer import import_from_yaml
 
 # provide the resource path to the package containing the schema file
-numberstream_package = &quot;hyrrokkin.example_packages.numberstream&quot;
+numbergraph_package = &quot;hyrrokkin.example_packages.numbergraph&quot;
 
-t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
+t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numbergraph_package])
 with open(&quot;topology.yaml&quot;) as f:
     import_from_yaml(t,f)
 t.run()
@@ -496,9 +489,9 @@ links:
 <pre><code class="language-py">from hyrrokkin.api.topology import Topology
 
 # provide the resource path to the package containing the schema file
-numberstream_package = &quot;hyrrokkin.example_packages.numberstream&quot;
+numbergraph_package = &quot;hyrrokkin.example_packages.numbergraph&quot;
 
-t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
+t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numbergraph_package])
 # create or import the topology
 t.run()
 with open(&quot;topology.zip&quot;,&quot;wb&quot;) as f:
@@ -508,9 +501,9 @@ with open(&quot;topology.zip&quot;,&quot;wb&quot;) as f:
 <pre><code class="language-py">from hyrrokkin.api.topology import Topology
 
 # provide the resource path to the package containing the schema file
-numberstream_package = &quot;hyrrokkin.example_packages.numberstream&quot;
+numbergraph_package = &quot;hyrrokkin.example_packages.numbergraph&quot;
 
-t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
+t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numbergraph_package])
 with open(&quot;topology.zip&quot;,&quot;rb&quot;) as f:
     t.load(f)
 t.run()
@@ -520,9 +513,9 @@ t.run()
 from hyrrokkin.utils.yaml_exporter import export_to_yaml
 
 # provide the resource path to the package containing the schema file
-numberstream_package = &quot;hyrrokkin.example_packages.numberstream&quot;
+numbergraph_package = &quot;hyrrokkin.example_packages.numbergraph&quot;
 
-t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numberstream_package])
+t = Topology(execution_folder=tempfile.mkdtemp(),package_list=[numbergraph_package])
 with open(&quot;topology.zip&quot;,&quot;rb&quot;) as f:
     t.load(f)
 with open(&quot;topology.yaml&quot;,&quot;w&quot;) as f:
@@ -535,18 +528,18 @@ with open(&quot;topology.yaml&quot;,&quot;w&quot;) as f:
 <h2 id="loading-saving-and-running-topologies-using-topology_runner-cli">loading, saving and running topologies using topology_runner CLI</h2>
 <p>The Hyrrokkin package will install a <code>topology_runner</code> CLI command.  Some typical usages include:</p>
 <p>Import a topology from zip and run it:</p>
-<pre><code class="language-bash">topology_runner --package hyrrokkin.example_packages.numberstream \      
+<pre><code class="language-bash">topology_runner --package hyrrokkin.example_packages.numbergraph \      
                 --execution-folder /tmp/execution_test \
                 --import topology.zip --run
 </code></pre>
 <p>Import a topology from yaml, run it and save the topology (including data) to a zip file:</p>
-<pre><code class="language-bash">topology_runner --package hyrrokkin.example_packages.numberstream \
+<pre><code class="language-bash">topology_runner --package hyrrokkin.example_packages.numbergraph \
                 --execution-folder /tmp/execution_test \
                 --import topology.yaml \
                 --run --export topology.zip
 </code></pre>
 <p>Convert a topology from zip format to yaml format, but do not run it:</p>
-<pre><code class="language-bash">topology_runner --package hyrrokkin.example_packages.numberstream \
+<pre><code class="language-bash">topology_runner --package hyrrokkin.example_packages.numbergraph \
                 --execution-folder /tmp/execution_test \
                 --import topology.zip \
                 --export topology.yaml
@@ -633,5 +626,5 @@ print(json.dumps(ep.parse(&quot;10 * sin(pi)&quot;),indent=2))
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2025-01-05 16:03:19.438481+00:00
+Build Date UTC : 2025-03-16 11:53:27.668131+00:00
 -->

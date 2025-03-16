@@ -63,7 +63,7 @@ class BasicTests(unittest.TestCase):
         self.assertTrue(t.run(output_listeners={"n1:data_out": lambda v: test_outputs.append(v)}))
         self.assertEqual(len(test_outputs), 1)
         self.assertEqual(test_outputs[0],[3,3,11])
-        self.assertEqual(status_messages,[('numbergraph', 'configuration', 'loaded cache (0 items)', 'info'), ('n2', 'node', '0 input integers, 1 input integerlists', 'info'), ('n2', 'node', '[[3, 3, 11]]', 'info'), ('numbergraph', 'configuration', 'saved cache (1 items)', 'info')])
+        self.assertEqual(status_messages,[('numbergraph', 'configuration', 'loaded cache (0 items)', 'info'),  ('n2', 'node', '[[3, 3, 11]]', 'info'), ('numbergraph', 'configuration', 'saved cache (1 items)', 'info')])
         self.assertEqual(list(map(lambda x:x[1:],execution_events)),[('n0', 'pending', None, False), ('n1', 'pending', None, False), ('n2', 'pending', None, False), ('n0', 'executing', None, False), ('n0', 'executed', None, False), ('n1', 'executing', None, False), ('n1', 'executed', None, False), ('n2', 'executing', None, False), ('n2', 'executed', None, False)])
 
         status_messages = []
@@ -71,7 +71,7 @@ class BasicTests(unittest.TestCase):
         test_outputs = []
         self.assertTrue(t.run(output_listeners={"n1:data_out":lambda v: test_outputs.append(v)}))
         self.assertEqual(len(test_outputs), 1)
-        self.assertEqual(status_messages,[('numbergraph', 'configuration', 'loaded cache (1 items)', 'info'), ('n2', 'node', '0 input integers, 1 input integerlists', 'info'), ('n2', 'node', '[[3, 3, 3, 37]]', 'info'), ('numbergraph', 'configuration', 'saved cache (2 items)', 'info')])
+        self.assertEqual(status_messages,[('numbergraph', 'configuration', 'loaded cache (1 items)', 'info'), ('n2', 'node', '[[3, 3, 3, 37]]', 'info'), ('numbergraph', 'configuration', 'saved cache (2 items)', 'info')])
         self.assertEqual(test_outputs[0], [3, 3, 3, 37])
 
     def test3(self):

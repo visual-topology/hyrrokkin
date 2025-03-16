@@ -189,18 +189,6 @@
         pass
 
     @abstractmethod
-    def connections_changed(self, input_connection_counts:Dict[str,int],
-            output_connection_counts:Dict[str,int]):
-        """
-        Called when the node's connections are configured or modified
-
-        Arguments:
-            input_connection_counts: a dictionary describing the number of connections attached to each input porty
-            output_connection_counts: a dictionary describing the number of connections attached to each output porty
-        """
-        pass
-
-    @abstractmethod
     async def run(self, inputs: Dict[str,List[Any]]) -&gt; Dict[str,Any]:
         """
         Called when a node should transform input values into output values
@@ -263,7 +251,7 @@
         <ul class="first simple">
             <li>
               <b><code>services</code></b>
-                  (<code><span title="hyrrokkin.services.node_services.NodeServices">NodeServices</span></code>)
+                  (<code><a class="autorefs autorefs-internal" title="hyrrokkin.executor.node_services.NodeServices" href="../node_service_api/#hyrrokkin.executor.node_services.NodeServices">NodeServices</a></code>)
               –
               <div class="doc-md-description">
                 <p>an object providing useful services, for example to get or set property values</p>
@@ -378,73 +366,6 @@ def close_client(self, client_id:str):
 
     Notes:
         a call to close_client is preceeded by a call to open_client with the same client_id
-    """
-    pass</code></pre>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="hyrrokkin.base.node_base.NodeBase.connections_changed" class="doc doc-heading">
-            <code class="highlight language-python">connections_changed(input_connection_counts, output_connection_counts)</code>
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
-  </span>
-
-</h3>
-
-
-    <div class="doc doc-contents ">
-
-        <p>Called when the node's connections are configured or modified</p>
-
-
-<table class="field-list">
-  <colgroup>
-    <col class="field-name" />
-    <col class="field-body" />
-  </colgroup>
-  <tbody valign="top">
-    <tr class="field">
-      <th class="field-name">Parameters:</th>
-      <td class="field-body">
-        <ul class="first simple">
-            <li>
-              <b><code>input_connection_counts</code></b>
-                  (<code><span title="typing.Dict">Dict</span>[str, int]</code>)
-              –
-              <div class="doc-md-description">
-                <p>a dictionary describing the number of connections attached to each input porty</p>
-              </div>
-            </li>
-            <li>
-              <b><code>output_connection_counts</code></b>
-                  (<code><span title="typing.Dict">Dict</span>[str, int]</code>)
-              –
-              <div class="doc-md-description">
-                <p>a dictionary describing the number of connections attached to each output porty</p>
-              </div>
-            </li>
-        </ul>
-      </td>
-    </tr>
-  </tbody>
-</table>
-            <details class="quote">
-              <summary>Source code in <code>hyrrokkin/base/node_base.py</code></summary>
-              <pre class="highlight"><code class="language-python">@abstractmethod
-def connections_changed(self, input_connection_counts:Dict[str,int],
-        output_connection_counts:Dict[str,int]):
-    """
-    Called when the node's connections are configured or modified
-
-    Arguments:
-        input_connection_counts: a dictionary describing the number of connections attached to each input porty
-        output_connection_counts: a dictionary describing the number of connections attached to each output porty
     """
     pass</code></pre>
             </details>

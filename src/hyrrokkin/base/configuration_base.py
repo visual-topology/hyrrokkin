@@ -22,7 +22,7 @@ from abc import abstractmethod
 from typing import Dict, List, Any
 
 from hyrrokkin.utils.type_hints import ClientMessageProtocol
-from hyrrokkin.services.configuration_services import ConfigurationServices
+from hyrrokkin.executor.configuration_services import ConfigurationServices
 
 
 class ConfigurationBase:

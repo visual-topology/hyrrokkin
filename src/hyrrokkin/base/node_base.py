@@ -22,7 +22,7 @@ from abc import abstractmethod
 from typing import Dict, List, Any
 
 from hyrrokkin.utils.type_hints import ClientMessageProtocol
-from hyrrokkin.services.node_services import NodeServices
+from hyrrokkin.executor.node_services import NodeServices
 
 class NodeBase:
 
@@ -76,18 +76,6 @@ class NodeBase:
 
         Notes:
             a call to close_client is preceeded by a call to open_client with the same client_id
-        """
-        pass
-
-    @abstractmethod
-    def connections_changed(self, input_connection_counts:Dict[str,int],
-            output_connection_counts:Dict[str,int]):
-        """
-        Called when the node's connections are configured or modified
-
-        Arguments:
-            input_connection_counts: a dictionary describing the number of connections attached to each input porty
-            output_connection_counts: a dictionary describing the number of connections attached to each output porty
         """
         pass
 

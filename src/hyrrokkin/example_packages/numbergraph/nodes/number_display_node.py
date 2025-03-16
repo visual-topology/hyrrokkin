@@ -6,11 +6,6 @@ class NumberDisplayNode:
         self.services = services
         self.clients = {}
 
-    def connections_changed(self, input_connection_counts, output_connection_counts):
-        nr_integer_inputs = input_connection_counts.get("integer_data_in",0)
-        nr_integerlist_inputs = input_connection_counts.get("integerlist_data_in",0)
-        self.services.set_status_info(f"{nr_integer_inputs} input integers, {nr_integerlist_inputs} input integerlists")
-
     def reset_run(self):
         for client_id in self.clients:
             self.clients[client_id].send_message(None)

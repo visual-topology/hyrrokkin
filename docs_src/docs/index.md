@@ -101,11 +101,13 @@ If the value passed by a client is not an integer, the node will issue a warning
 | set_status_error(msg)   | sets the status as ERROR accompanied by message `msg`         |
 | clear_status()          | clears the status associated with this node                   |
 
-### Node lifecycle - the `reset_run`, `connections_changed` and `close` methods.
+### Node lifecycle - the `load`, `reset_run`, `run` and `close` methods.
 
-The `NumberDisplayNode` implements some code to collect input values and report thm to any connected clients.
+The `NumberDisplayNode` implements some code to collect input values and report them to any connected clients.
 
-When a topology is loaded, or when any upstream node in the topology is re-run, the node's inputs will be collected and its run method will be called.  But, before this happens, the node's `reset_run` method will be called, if it is implemented.  A node can implement this method to inform any clients that the node's current results are invalid and the node will soon be re-run.  
+When a topology is loaded, or when any upstream node in the topology is re-run, the node will be constructed and its `load` method, if implemented, will be called.
+
+As the topology is executed, the node's inputs will be collected and its `run` method will be called.  But, before this happens, the node's `reset_run` method will be called, if it is implemented.  A node can implement this method to inform any clients that the node's current results are invalid and the node will soon be re-run.  
 
 ``` py
 --8<-- "../src/hyrrokkin/example_packages/numbergraph/nodes/number_display_node.py"
@@ -113,17 +115,13 @@ When a topology is loaded, or when any upstream node in the topology is re-run, 
 
 The `reset_run` method is called as soon as the framework is aware that the node's `run` method will need to be called. 
 
-When the topology is loaded or later updated, the number of links connected to a node's input and output ports may change.  
-
-A node may implement a `connections_changed` method to receive notifications providing this information when a topology is first loaded and later, if these connections change:
-
 A node may implement a `close` method to receive notifications when the node is removed from a topology
 
 ### Defining the package configuration
 
 The package configuration is defined in a similar way to a node, with a constructor accepting a services object. and an optional load method which is called to load up any additional resources which are needed by the configuration and its nodes.
 
-In this example, the configuration can offer a shared service to compute and cache factorisations, that can be accessed by all nodes within the topology.
+In this example, the configuration can offer a service to store and retrieve factorisations, that can be accessed by all nodes.
 
 ``` py
 --8<-- "../src/hyrrokkin/example_packages/numbergraph/numbergraph_configuration.py"

@@ -101,9 +101,6 @@ class ExecutionEngine():
         self.terminate_on_complete = terminate_on_complete
         self.paused = False
 
-        # notify the nodes of their connections
-        for node_id in self.node_wrappers:
-            self.notify_connection_counts(node_id)
         #
         # # for nodes that do not have any outputs from the previous execution
         # for node_id in all_node_ids:
@@ -119,7 +116,6 @@ class ExecutionEngine():
         await self.register_node(node_id, node_type_id)
         self.mark_dirty(node_id)
         if not loading:
-            self.notify_connection_counts(node_id)
             self.dispatch()
         else:
             self.pending_connection_counts.add(node_id)
@@ -168,8 +164,6 @@ class ExecutionEngine():
 
         if not loading:
             self.mark_dirty(to_node_id)
-            self.notify_connection_counts(to_node_id)
-            self.notify_connection_counts(from_node_id)
             self.dispatch()
 
     async def remove_link(self, link_id):
@@ -179,27 +173,8 @@ class ExecutionEngine():
         self.out_links[link.from_node_id][link.from_port].remove(link)
         del self.links[link_id]
 
-        self.notify_connection_counts(link.to_node_id)
-        self.notify_connection_counts(link.from_node_id)
-
         self.mark_dirty(link.to_node_id)
         self.dispatch()
-
-    def notify_connection_counts(self, node_id):
-        try:
-            if node_id in self.node_wrappers:
-                input_connection_counts = {}
-                output_connection_counts = {}
-                in_links = self.in_links.get(node_id,{})
-                for port in in_links:
-                    input_connection_counts[port] = len(in_links[port])
-                out_links = self.out_links.get(node_id, {})
-                for port in out_links:
-                    output_connection_counts[port] = len(out_links[port])
-
-                self.node_wrappers[node_id].connections_changed(input_connection_counts,output_connection_counts)
-        except:
-            self.logger.exception("notify_connection_counts")
 
     async def clear(self):
         pass # TODO
@@ -345,8 +320,6 @@ class ExecutionEngine():
         if self.paused:
             return
 
-        for node_id in self.pending_connection_counts:
-            self.notify_connection_counts(node_id)
         self.pending_connection_counts = set()
 
         launch_nodes = []

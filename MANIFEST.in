@@ -1,0 +1,2 @@
+include src/hyrrokkin/tools/package_validation/package_schema.json
+include src/hyrrokkin/example_packages/numbergraph/schema.json
